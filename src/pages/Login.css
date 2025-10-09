@@ -1,0 +1,172 @@
+/* Contenedor principal */
+.login-container {
+  display: flex;
+  height: 100vh;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* ===== IZQUIERDA ===== */
+.left-section {
+  position: relative;
+  width: 50%;
+  background-color: #f5a700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.overlay-shape {
+  position: absolute;
+  top: 0;
+  right: -50px;
+  width: 130%;
+  height: 100%;
+  background: linear-gradient(180deg, #f5a700 0%, #ffd36b 100%);
+  clip-path: ellipse(90% 60% at 30% 40%);
+  z-index: 0;
+}
+
+.content-left {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+}
+
+.logo {
+  width: 180px;
+  height: auto;
+  margin-bottom: 30px;
+}
+
+.bienvenido-text {
+  font-size: 2.5rem;
+  color: white;
+  font-weight: 700;
+  text-shadow: 0 3px 5px rgba(0, 0, 0, 0.2);
+}
+
+/* ===== DERECHA ===== */
+.right-section {
+  width: 50%;
+  background-color: #EFEFEF; /* color gris claro */
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  padding: 60px 40px;
+  align-items: flex-start;
+}
+
+.titulo-derecha {
+  font-weight: 700;
+  font-size: 2rem;
+  color: #000;
+  margin-bottom: 100px;
+  text-align: left;
+  position: relative;
+}
+
+/* Reflejo desenfocado */
+.titulo-derecha::after {
+  content: attr(data-text); /* duplicamos el texto */
+  display: block;
+  position: absolute;
+  left: 0;
+  top: 100%; /* justo debajo del texto */
+  width: 100%;
+  color: rgba(0, 0, 0, 0.2); /* color base del reflejo */
+  transform: scaleY(-1); /* volteamos verticalmente */
+  opacity: 0.4;
+  filter: blur(2px); /* desenfoque */  
+  pointer-events: none;
+}
+
+
+.form-right {
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.input-group {
+  width: 100%;
+  margin-bottom: 25px;
+  display: flex;
+  flex-direction: column;
+}
+
+.label-input {
+  font-weight: 600;
+  color: #007bff; /* etiqueta azul */
+  margin-bottom: 5px;
+}
+
+.form-control.input-azul {
+  width: 100%;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  color: black; /* texto negro */
+  font-weight: 900;
+  background-color: white;
+}
+
+.form-control.input-azul::placeholder {
+  color: transparent; /* no placeholder visible */
+}
+
+.btn-iniciar {
+  width: 100%; /* igual que inputs */
+  padding: 12px;
+  border-radius: 8px;
+  background-color: #f5a700;
+  border: none;
+  color: white;
+  font-weight: 700;
+  font-size: 1rem;
+  transition: 0.3s ease;
+  margin-top: 10px;
+}
+
+.btn-iniciar:hover {
+  background-color: #d89000;
+}
+
+/* Adaptabilidad */
+@media (max-width: 992px) {
+  .login-container {
+    flex-direction: column;
+  }
+
+  .left-section,
+  .right-section {
+    width: 100%;
+    height: 50%;
+  }
+
+  .right-section {
+    padding: 40px 20px;
+  }
+}
+
+.btn-recuperar {
+    background: none;
+    border: none;
+    color: #EC9D02;
+    cursor: pointer;
+    font-size: 0.9rem;
+    text-decoration: none; /* aquí quitamos la línea */
+    padding: 0;
+    margin-top: 15px;
+}
+
+.btn-recuperar:hover {
+    color: #333;
+    text-decoration: none; /* aseguramos que no aparezca línea al hover */
+}
+
+
