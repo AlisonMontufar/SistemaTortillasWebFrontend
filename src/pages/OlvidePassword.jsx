@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "./OlvidePassword.css";
 import logo from "../assets/logo.png";
@@ -13,30 +13,116 @@ function OlvidePassword() {
   const [token, setToken] = useState("");
   const [nuevaPass, setNuevaPass] = useState("");
   const [confirmPass, setConfirmPass] = useState("");
-  const [notificacion, setNotificacion] = useState(false);
+  const [notificacion, setNotificacion] = useState("");
+  const [tipoNotificacion, setTipoNotificacion] = useState(""); // success o error
   const [mostrarPass, setMostrarPass] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleContinuar = (e) => {
+  // 🔔 Hace desaparecer la notificación automáticamente
+  useEffect(() => {
+    if (notificacion) {
+      const timer = setTimeout(() => {
+        setNotificacion("");
+        setTipoNotificacion("");
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [notificacion]);
+
+  // === 1️⃣ Enviar correo para recuperación ===
+  const handleContinuar = async (e) => {
     e.preventDefault();
-    if (!correo) return alert("Ingresa tu correo electrónico");
-    setStep(2);
+    if (!correo) {
+      setTipoNotificacion("error");
+      setNotificacion("Ingresa tu correo electrónico");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await fetch("http://localhost:5149/api/Auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ correo }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setTipoNotificacion("error");
+        setNotificacion(data.message || "Error al enviar el correo.");
+        setLoading(false);
+        return;
+      }
+
+      setTipoNotificacion("success");
+      setNotificacion("Correo de recuperación enviado correctamente. Revisa tu bandeja.");
+      setStep(2);
+    } catch (error) {
+      console.error(error);
+      setTipoNotificacion("error");
+      setNotificacion("Error al conectar con el servidor.");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleActualizar = (e) => {
+  // === 2️⃣ Restablecer contraseña ===
+  const handleActualizar = async (e) => {
     e.preventDefault();
-    if (!token || !nuevaPass || !confirmPass) return alert("Completa todos los campos");
-    if (nuevaPass !== confirmPass) return alert("Las contraseñas no coinciden");
 
-    setNotificacion(true);
-    setTimeout(() => {
-      setNotificacion(false);
-      navigate("/"); // Regresa al login
-    }, 1000);
+    if (!token || !nuevaPass || !confirmPass) {
+      setTipoNotificacion("error");
+      setNotificacion("Completa todos los campos");
+      return;
+    }
+    if (nuevaPass !== confirmPass) {
+      setTipoNotificacion("error");
+      setNotificacion("Las contraseñas no coinciden");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await fetch("http://localhost:5149/api/Auth/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token: token,
+          nuevaContrasena: nuevaPass,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setTipoNotificacion("error");
+        setNotificacion(data.message || "Error al restablecer la contraseña.");
+        setLoading(false);
+        return;
+      }
+
+      setTipoNotificacion("success");
+      setNotificacion("¡Contraseña cambiada correctamente!");
+      setTimeout(() => {
+        navigate("/");
+      }, 1500);
+    } catch (error) {
+      console.error(error);
+      setTipoNotificacion("error");
+      setNotificacion("Error al conectar con el servidor.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="olvide-page">
-      {notificacion && <div className="notificacion">¡Contraseña cambiada correctamente!</div>}
+      {notificacion && (
+        <div className={`notificacion ${tipoNotificacion}`}>
+          {notificacion}
+        </div>
+      )}
 
       <div className="olvide-card">
         <img src={logo} alt="Logo" className="olvide-logo" />
@@ -47,6 +133,7 @@ function OlvidePassword() {
           <span className={step === 2 ? "active-step" : ""}>2</span>
         </div>
 
+        {/* Paso 1: Enviar correo */}
         {step === 1 && (
           <form className="olvide-form" onSubmit={handleContinuar}>
             <h2 className="titulo-card">Recuperar contraseña</h2>
@@ -58,14 +145,18 @@ function OlvidePassword() {
               onChange={(e) => setCorreo(e.target.value)}
               required
             />
-            <button type="submit" className="btn-olvide">Continuar</button>
+            <button type="submit" className="btn-olvide" disabled={loading}>
+              {loading ? "Enviando..." : "Continuar"}
+            </button>
           </form>
         )}
 
+        {/* Paso 2: Restablecer contraseña */}
         {step === 2 && (
           <form className="olvide-form" onSubmit={handleActualizar}>
             <h2 className="titulo-card">Nueva contraseña</h2>
             <p className="subtitulo-card">Ingresa el token y tu nueva contraseña</p>
+
             <input
               type="text"
               placeholder="Código de verificación"
@@ -74,7 +165,7 @@ function OlvidePassword() {
               required
             />
 
-            {/* Nueva contraseña con icono de ojo */}
+            {/* Nueva contraseña */}
             <div className="input-password">
               <input
                 type={mostrarPass ? "text" : "password"}
@@ -91,7 +182,7 @@ function OlvidePassword() {
               />
             </div>
 
-            {/* Confirmar contraseña con icono de ojo */}
+            {/* Confirmar contraseña */}
             <div className="input-password">
               <input
                 type={mostrarPass ? "text" : "password"}
@@ -108,7 +199,9 @@ function OlvidePassword() {
               />
             </div>
 
-            <button type="submit" className="btn-olvide">Actualizar</button>
+            <button type="submit" className="btn-olvide" disabled={loading}>
+              {loading ? "Actualizando..." : "Actualizar"}
+            </button>
             <button
               type="button"
               className="btn-volver"
