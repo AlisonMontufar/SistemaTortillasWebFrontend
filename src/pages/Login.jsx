@@ -52,7 +52,6 @@ function Login() {
         <div className="login-container">
             {/* SECCIÓN IZQUIERDA */}
             <div className="left-section">
-                {/* Onda superior */}
                 <div className="top-wave">
                     <svg viewBox="0 0 500 150" preserveAspectRatio="none">
                         <path
@@ -62,7 +61,6 @@ function Login() {
                     </svg>
                 </div>
 
-                {/* Contenido centrado */}
                 <div className="content-left">
                     <div className="logo-wrap">
                         <img src={logo} alt="Logo" className="logo" />
@@ -70,7 +68,6 @@ function Login() {
                     <h1 className="bienvenido-text">Bienvenido</h1>
                 </div>
 
-                {/* Onda inferior */}
                 <div className="bottom-wave">
                     <svg viewBox="0 0 500 150" preserveAspectRatio="none">
                         <path
@@ -80,24 +77,18 @@ function Login() {
                     </svg>
                 </div>
 
-                {/* Segunda onda invertida con doble bajada desde la derecha */}
                 <div className="bottom-wave second-wave">
                     <svg viewBox="0 0 500 150" preserveAspectRatio="none">
                         <path
                             d="M500,0 
-         C300,150 100,10 0,100 
-         C1,130 0,0 0,170 
-         L0,500 L900,0 Z"
+                                C300,150 100,10 0,100 
+                                C1,130 0,0 0,170 
+                                L0,500 L900,0 Z"
                             fill="rgba(243, 241, 241, 0.73)"
                         />
                     </svg>
                 </div>
-
-
-
             </div>
-
-
 
             {/* SECCIÓN DERECHA */}
             <div className="right-section" role="main">
@@ -143,6 +134,18 @@ function Login() {
                             onClick={() => navigate("/olvide-password")}
                         >
                             ¿Olvidaste tu contraseña?
+                        </button>
+                    </div>
+
+                    {/* NUEVA SECCIÓN: REGISTRARSE */}
+                    <div className="registrarse">
+                        <span className="texto-gris">¿No tienes una cuenta?</span>{" "}
+                        <button
+                            type="button"
+                            className="btn-registrate"
+                            onClick={() => navigate("/registro")}
+                        >
+                            Regístrate
                         </button>
                     </div>
                 </form>

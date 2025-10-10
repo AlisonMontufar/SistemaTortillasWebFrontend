@@ -208,3 +208,32 @@
     margin-bottom: 40px;
   }
 }
+
+/* ===== REGISTRARSE ===== */
+.registrarse {
+  margin-top: 25px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
+.texto-gris {
+  color: #A6A6A6;
+  font-size: 0.95rem;
+}
+
+.btn-registrate {
+  background: none;
+  border: none;
+  color: #EC9D02;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition: color 0.3s ease;
+}
+
+.btn-registrate:hover {
+  color: #d89000;
+}
+
