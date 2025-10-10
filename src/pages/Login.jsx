@@ -13,7 +13,6 @@ function Login() {
         e.preventDefault();
         setError("");
 
-        // Validaciones básicas
         if (!usuario.trim() || !contrasena.trim()) {
             setError("Por favor, completa todos los campos.");
             return;
@@ -42,9 +41,7 @@ function Login() {
                 return;
             }
 
-            // Si todo OK
             navigate("/inicio");
-
         } catch (err) {
             console.error(err);
             setError("Error al conectar con el servidor.");
@@ -53,18 +50,56 @@ function Login() {
 
     return (
         <div className="login-container">
-            {/* Izquierda */}
+            {/* SECCIÓN IZQUIERDA */}
             <div className="left-section">
-                <div className="left-waves" />
-                <div className="left-content">
+                {/* Onda superior */}
+                <div className="top-wave">
+                    <svg viewBox="0 0 500 150" preserveAspectRatio="none">
+                        <path
+                            d="M0,50 C150,150 350,0 500,50 L500,0 L0,0 Z"
+                            fill="rgba(255,255,255,0.3)"
+                        />
+                    </svg>
+                </div>
+
+                {/* Contenido centrado */}
+                <div className="content-left">
                     <div className="logo-wrap">
                         <img src={logo} alt="Logo" className="logo" />
                     </div>
                     <h1 className="bienvenido-text">Bienvenido</h1>
                 </div>
+
+                {/* Onda inferior */}
+                <div className="bottom-wave">
+                    <svg viewBox="0 0 500 150" preserveAspectRatio="none">
+                        <path
+                            d="M1,-10 C100,100 350,-80 500,150 L500,150 L0,150 Z"
+                            fill="rgba(255,255,255,0.3)"
+                        />
+                    </svg>
+                </div>
+
+                {/* Segunda onda invertida con doble bajada desde la derecha */}
+                <div className="bottom-wave second-wave">
+                    <svg viewBox="0 0 500 150" preserveAspectRatio="none">
+                        <path
+                            d="M500,0 
+         C300,150 100,10 0,100 
+         C1,130 0,0 0,170 
+         L0,500 L900,0 Z"
+                            fill="rgba(243, 241, 241, 0.73)"
+                        />
+                    </svg>
+                </div>
+
+
+
             </div>
 
-            {/* Derecha */}
+
+
+            {/* SECCIÓN DERECHA */}
             <div className="right-section" role="main">
                 <h2 className="titulo-derecha" data-text="INICIAR SESION">INICIAR SESION</h2>
 
@@ -78,10 +113,8 @@ function Login() {
                             name="user"
                             type="text"
                             className="form-control input-azul"
-                            placeholder="Ingresa tu usuario"
                             value={usuario}
                             onChange={(e) => setUsuario(e.target.value)}
-                            aria-label="Usuario"
                             required
                         />
                     </div>
@@ -93,10 +126,8 @@ function Login() {
                             name="password"
                             type="password"
                             className="form-control input-azul"
-                            placeholder="Ingresa tu contraseña"
                             value={contrasena}
                             onChange={(e) => setContrasena(e.target.value)}
-                            aria-label="Contraseña"
                             required
                         />
                     </div>
@@ -105,7 +136,6 @@ function Login() {
                         INICIAR SESION
                     </button>
 
-                    {/* Recuperar contraseña */}
                     <div className="recuperar-pass">
                         <button
                             type="button"

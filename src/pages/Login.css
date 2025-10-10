@@ -1,8 +1,9 @@
-/* Contenedor principal */
+/* ===== CONTENEDOR PRINCIPAL ===== */
 .login-container {
   display: flex;
   height: 100vh;
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  overflow: hidden;
 }
 
 /* ===== IZQUIERDA ===== */
@@ -17,17 +18,6 @@
   overflow: hidden;
 }
 
-.overlay-shape {
-  position: absolute;
-  top: 0;
-  right: -50px;
-  width: 130%;
-  height: 100%;
-  background: linear-gradient(180deg, #f5a700 0%, #ffd36b 100%);
-  clip-path: ellipse(90% 60% at 30% 40%);
-  z-index: 0;
-}
-
 .content-left {
   position: relative;
   z-index: 1;
@@ -35,9 +25,9 @@
 }
 
 .logo {
-  width: 180px;
+  width: 200px;
   height: auto;
-  margin-bottom: 30px;
+  margin-bottom: 25px;
 }
 
 .bienvenido-text {
@@ -45,47 +35,95 @@
   color: white;
   font-weight: 700;
   text-shadow: 0 3px 5px rgba(0, 0, 0, 0.2);
+  margin-top: -30px; /* sube 50px, ajusta a tu gusto */
+}
+
+
+/* ===== ONDAS ===== */
+.top-wave,
+.bottom-wave {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  overflow: hidden;
+  line-height: 0;
+  z-index: 0;
+}
+
+.top-wave {
+  top: 0;
+  transform: scaleX(-1);
+}
+
+.bottom-wave {
+  bottom: 0;
+}
+
+.top-wave svg,
+.bottom-wave svg {
+  display: block;
+  width: 100%;
+  height: 150px;
+}
+
+/* ===== SEGUNDA ONDA ===== */
+.second-wave {
+  position: absolute;
+  bottom: 0px;
+  left: 0;
+  width: 100%;
+  z-index: 1;
+  transform: none;
+  pointer-events: none;
+}
+
+.second-wave svg {
+  display: block;
+  width: 100%;
+  height: 180px;
 }
 
 /* ===== DERECHA ===== */
 .right-section {
   width: 50%;
-  background-color: #EFEFEF; /* color gris claro */
+  background-color: #efefef;
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
-  padding: 60px 40px;
-  align-items: flex-start;
+  align-items: center;
+  justify-content: center; /* 🔥 centra verticalmente todo */
+  padding: 40px 40px;
+  text-align: center;
+  position: relative;
 }
 
 .titulo-derecha {
   font-weight: 700;
   font-size: 2rem;
   color: #000;
-  margin-bottom: 100px;
-  text-align: left;
+  margin-bottom: 60px; /* espaciado más equilibrado */
+  position: absolute;
+  top: -30px;   /* distancia desde arriba */
+  left: -70px;  /* distancia desde la izquierda */
   position: relative;
 }
 
-/* Reflejo desenfocado */
 .titulo-derecha::after {
-  content: attr(data-text); /* duplicamos el texto */
+  content: attr(data-text);
   display: block;
   position: absolute;
   left: 0;
-  top: 100%; /* justo debajo del texto */
+  top: 100%;
   width: 100%;
-  color: rgba(0, 0, 0, 0.2); /* color base del reflejo */
-  transform: scaleY(-1); /* volteamos verticalmente */
+  color: rgba(0, 0, 0, 0.2);
+  transform: scaleY(-1);
   opacity: 0.4;
-  filter: blur(2px); /* desenfoque */  
-  pointer-events: none;
+  filter: blur(2px);
 }
 
-
+/* ===== FORMULARIO ===== */
 .form-right {
   width: 100%;
-  max-width: 400px;
+  max-width: 380px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -96,11 +134,12 @@
   margin-bottom: 25px;
   display: flex;
   flex-direction: column;
+  text-align: left;
 }
 
 .label-input {
   font-weight: 600;
-  color: #007bff; /* etiqueta azul */
+  color: #015176;
   margin-bottom: 5px;
 }
 
@@ -110,17 +149,13 @@
   border-radius: 8px;
   border: 1px solid #ccc;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-  color: black; /* texto negro */
+  color: black;
   font-weight: 900;
   background-color: white;
 }
 
-.form-control.input-azul::placeholder {
-  color: transparent; /* no placeholder visible */
-}
-
 .btn-iniciar {
-  width: 100%; /* igual que inputs */
+  width: 100%;
   padding: 12px;
   border-radius: 8px;
   background-color: #f5a700;
@@ -136,7 +171,24 @@
   background-color: #d89000;
 }
 
-/* Adaptabilidad */
+/* ===== OLVIDÉ CONTRASEÑA ===== */
+.recuperar-pass {
+  margin-top: 15px;
+}
+
+.btn-recuperar {
+  background: none;
+  border: none;
+  color: #ec9d02;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.btn-recuperar:hover {
+  color: #333;
+}
+
+/* ===== RESPONSIVE ===== */
 @media (max-width: 992px) {
   .login-container {
     flex-direction: column;
@@ -149,24 +201,10 @@
   }
 
   .right-section {
-    padding: 40px 20px;
+    padding: 30px 20px;
+  }
+
+  .titulo-derecha {
+    margin-bottom: 40px;
   }
 }
-
-.btn-recuperar {
-    background: none;
-    border: none;
-    color: #EC9D02;
-    cursor: pointer;
-    font-size: 0.9rem;
-    text-decoration: none; /* aquí quitamos la línea */
-    padding: 0;
-    margin-top: 15px;
-}
-
-.btn-recuperar:hover {
-    color: #333;
-    text-decoration: none; /* aseguramos que no aparezca línea al hover */
-}
-
-
