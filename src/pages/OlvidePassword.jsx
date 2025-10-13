@@ -18,21 +18,28 @@ function OlvidePassword() {
   const [mostrarPass, setMostrarPass] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // 🔔 Hace desaparecer la notificación automáticamente
+  // 🔔 Notificaciones desaparecen automáticamente
   useEffect(() => {
     if (notificacion) {
       const timer = setTimeout(() => {
         setNotificacion("");
         setTipoNotificacion("");
-      }, 3000);
+      }, 4000);
       return () => clearTimeout(timer);
     }
   }, [notificacion]);
 
-  // === 1️⃣ Enviar correo para recuperación ===
+  // Validación de contraseña
+  const validarContrasena = (pass) => {
+    const regex =
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+=[\]{};':"\\|,.<>/?-]).{8,}$/;
+    return regex.test(pass);
+  };
+
+  // === Paso 1: Enviar correo ===
   const handleContinuar = async (e) => {
     e.preventDefault();
-    if (!correo) {
+    if (!correo.trim()) {
       setTipoNotificacion("error");
       setNotificacion("Ingresa tu correo electrónico");
       return;
@@ -40,10 +47,10 @@ function OlvidePassword() {
 
     try {
       setLoading(true);
-      const response = await fetch("http://localhost:5149/api/Auth/forgot-password", {
+      const response = await fetch("http://localhost:5000/api/Auth/forgot-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ correo }),
+        body: JSON.stringify({ correo: correo.trim() }),
       });
 
       const data = await response.json();
@@ -51,7 +58,6 @@ function OlvidePassword() {
       if (!response.ok) {
         setTipoNotificacion("error");
         setNotificacion(data.message || "Error al enviar el correo.");
-        setLoading(false);
         return;
       }
 
@@ -67,30 +73,36 @@ function OlvidePassword() {
     }
   };
 
-  // === 2️⃣ Restablecer contraseña ===
+  // === Paso 2: Restablecer contraseña ===
   const handleActualizar = async (e) => {
     e.preventDefault();
 
-    if (!token || !nuevaPass || !confirmPass) {
+    if (!token.trim() || !nuevaPass.trim() || !confirmPass.trim()) {
       setTipoNotificacion("error");
       setNotificacion("Completa todos los campos");
       return;
     }
+
     if (nuevaPass !== confirmPass) {
       setTipoNotificacion("error");
       setNotificacion("Las contraseñas no coinciden");
       return;
     }
 
+    if (!validarContrasena(nuevaPass)) {
+      setTipoNotificacion("error");
+      setNotificacion(
+        "La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula, un número y un carácter especial."
+      );
+      return;
+    }
+
     try {
       setLoading(true);
-      const response = await fetch("http://localhost:5149/api/Auth/reset-password", {
+      const response = await fetch("http://localhost:5000/api/Auth/reset-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          token: token,
-          nuevaContrasena: nuevaPass,
-        }),
+        body: JSON.stringify({ token: token.trim(), nuevaContrasena: nuevaPass }),
       });
 
       const data = await response.json();
@@ -98,15 +110,12 @@ function OlvidePassword() {
       if (!response.ok) {
         setTipoNotificacion("error");
         setNotificacion(data.message || "Error al restablecer la contraseña.");
-        setLoading(false);
         return;
       }
 
       setTipoNotificacion("success");
       setNotificacion("¡Contraseña cambiada correctamente!");
-      setTimeout(() => {
-        navigate("/");
-      }, 1500);
+      setTimeout(() => navigate("/"), 1500);
     } catch (error) {
       console.error(error);
       setTipoNotificacion("error");
@@ -133,7 +142,7 @@ function OlvidePassword() {
           <span className={step === 2 ? "active-step" : ""}>2</span>
         </div>
 
-        {/* Paso 1: Enviar correo */}
+        {/* Paso 1 */}
         {step === 1 && (
           <form className="olvide-form" onSubmit={handleContinuar}>
             <h2 className="titulo-card">Recuperar contraseña</h2>
@@ -148,10 +157,18 @@ function OlvidePassword() {
             <button type="submit" className="btn-olvide" disabled={loading}>
               {loading ? "Enviando..." : "Continuar"}
             </button>
+            <button
+              type="button"
+              className="btn-volver"
+              onClick={() => navigate("/")}
+              disabled={loading}
+            >
+              Regresar al inicio
+            </button>
           </form>
         )}
 
-        {/* Paso 2: Restablecer contraseña */}
+        {/* Paso 2 */}
         {step === 2 && (
           <form className="olvide-form" onSubmit={handleActualizar}>
             <h2 className="titulo-card">Nueva contraseña</h2>
@@ -165,7 +182,6 @@ function OlvidePassword() {
               required
             />
 
-            {/* Nueva contraseña */}
             <div className="input-password">
               <input
                 type={mostrarPass ? "text" : "password"}
@@ -182,7 +198,6 @@ function OlvidePassword() {
               />
             </div>
 
-            {/* Confirmar contraseña */}
             <div className="input-password">
               <input
                 type={mostrarPass ? "text" : "password"}
@@ -205,9 +220,10 @@ function OlvidePassword() {
             <button
               type="button"
               className="btn-volver"
-              onClick={() => setStep(1)}
+              onClick={() => navigate("/")}
+              disabled={loading}
             >
-              Volver
+              Regresar al inicio
             </button>
           </form>
         )}

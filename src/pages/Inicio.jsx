@@ -11,11 +11,14 @@ const icons = {
 };
 
 function Inicio() {
-    const usuario = "Javi";
+    // Leer el nombre del usuario desde localStorage
+    const usuario = localStorage.getItem("nombreUsuario") || "Invitado";
     const navigate = useNavigate(); // <-- hook de navegación
 
     const handleLogout = () => {
-        // Aquí puedes limpiar localStorage, cookies o estados si lo deseas
+        // Limpiar localStorage al cerrar sesión
+        localStorage.removeItem("token");
+        localStorage.removeItem("nombreUsuario");
         navigate("/"); // Redirige al login
     };
 
