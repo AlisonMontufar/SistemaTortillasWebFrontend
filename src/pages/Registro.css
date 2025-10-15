@@ -232,3 +232,30 @@ input:focus {
     max-height: 95vh; 
   }
 }
+
+/* ====== Validaciones en tiempo real ====== */
+.error {
+  color: #e63946;
+  font-size: 0.85rem;
+  margin-top: 4px;
+  font-weight: 500;
+}
+
+input:valid {
+  border: 1.5px solid #2ecc71;
+}
+
+input:invalid {
+  border: 1.5px solid #e63946;
+}
+
+/* Mensajes tipo toast */
+.toast.success {
+  background-color: #2ecc71;
+  color: white;
+}
+
+.toast.error {
+  background-color: #e63946;
+  color: white;
+}
