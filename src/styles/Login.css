@@ -2,7 +2,6 @@
 .login-container {
   display: flex;
   height: 100vh;
-  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
   overflow: hidden;
 }
 
@@ -136,7 +135,7 @@
 
 .form-control.input-azul {
   width: 100%;
-  padding: 12px 45px 12px 12px; /* Espacio a la derecha para el botón */
+  padding: 12px 45px 12px 12px;
   border-radius: 8px;
   border: 1px solid #ccc;
   color: black;
@@ -153,14 +152,14 @@
 }
 
 /* ===== VALIDACIONES EN TIEMPO REAL ===== */
-.input-success {
-  border-color: #2ecc71 !important;
-  box-shadow: none !important;
+.form-control.input-azul.input-success {
+  border-color: #2ecc71;
+  box-shadow: none;
 }
 
-.input-error {
-  border-color: #e63946 !important;
-  box-shadow: none !important;
+.form-control.input-azul.input-error {
+  border-color: #e63946;
+  box-shadow: none;
 }
 
 .error-text {
@@ -311,6 +310,8 @@
 }
 
 /* ===== RESPONSIVE ===== */
+
+/* Tablets (768px - 992px) */
 @media (max-width: 992px) {
   .login-container {
     flex-direction: column;
@@ -328,5 +329,243 @@
 
   .titulo-derecha {
     margin-bottom: 40px;
+  }
+}
+
+/* Tabletas pequeñas y móviles grandes (576px - 768px) */
+@media (max-width: 768px) {
+  .login-container {
+    flex-direction: column;
+    height: auto;
+    min-height: 100vh;
+  }
+
+  .left-section,
+  .right-section {
+    width: 100%;
+    height: auto;
+    min-height: 50vh;
+  }
+
+  .left-section {
+    padding: 40px 20px;
+  }
+
+  .right-section {
+    padding: 40px 20px;
+  }
+
+  .logo {
+    width: 150px;
+    margin-bottom: 20px;
+  }
+
+  .bienvenido-text {
+    font-size: 2rem;
+    margin-top: -20px;
+  }
+
+  .titulo-derecha {
+    font-size: 1.7rem;
+    top: 0;
+    left: 0;
+    margin-bottom: 40px;
+    text-align: center;
+  }
+
+  .form-right {
+    max-width: 100%;
+  }
+
+  .top-wave svg,
+  .bottom-wave svg {
+    height: 100px;
+  }
+
+  .second-wave svg {
+    height: 120px;
+  }
+}
+
+/* Móviles (480px - 576px) */
+@media (max-width: 576px) {
+  .left-section {
+    padding: 30px 15px;
+    min-height: 45vh;
+  }
+
+  .right-section {
+    padding: 30px 15px;
+    min-height: 55vh;
+  }
+
+  .logo {
+    width: 120px;
+    margin-bottom: 15px;
+  }
+
+  .bienvenido-text {
+    font-size: 1.7rem;
+    margin-top: -15px;
+  }
+
+  .titulo-derecha {
+    font-size: 1.5rem;
+    margin-bottom: 30px;
+  }
+
+  .input-group {
+    margin-bottom: 20px;
+  }
+
+  .form-control.input-azul {
+    padding: 10px 40px 10px 10px;
+    font-size: 0.9rem;
+  }
+
+  .btn-iniciar {
+    padding: 10px;
+    font-size: 0.9rem;
+  }
+
+  .toggle-password {
+    font-size: 1.1rem;
+    right: 10px;
+  }
+
+  .toast {
+    top: 20px;
+    right: 20px;
+    left: 20px;
+    padding: 12px 20px;
+    font-size: 0.9rem;
+  }
+
+  .top-wave svg,
+  .bottom-wave svg {
+    height: 80px;
+  }
+
+  .second-wave svg {
+    height: 100px;
+  }
+}
+
+/* Móviles pequeños (hasta 480px) */
+@media (max-width: 480px) {
+  .left-section {
+    padding: 25px 10px;
+    min-height: 40vh;
+  }
+
+  .right-section {
+    padding: 25px 10px;
+    min-height: 60vh;
+  }
+
+  .logo {
+    width: 100px;
+    margin-bottom: 10px;
+  }
+
+  .bienvenido-text {
+    font-size: 1.4rem;
+    margin-top: -10px;
+  }
+
+  .titulo-derecha {
+    font-size: 1.3rem;
+    margin-bottom: 25px;
+  }
+
+  .form-control.input-azul {
+    padding: 8px 35px 8px 8px;
+    font-size: 0.85rem;
+  }
+
+  .btn-iniciar {
+    padding: 8px;
+    font-size: 0.85rem;
+  }
+
+  .toggle-password {
+    font-size: 1rem;
+    right: 8px;
+  }
+
+  .label-input {
+    font-size: 0.9rem;
+  }
+
+  .btn-recuperar {
+    font-size: 0.8rem;
+  }
+
+  .error-text,
+  .success-text {
+    font-size: 0.75rem;
+  }
+}
+
+/* Móviles muy pequeños (hasta 360px) */
+@media (max-width: 360px) {
+  .bienvenido-text {
+    font-size: 1.2rem;
+  }
+
+  .titulo-derecha {
+    font-size: 1.1rem;
+  }
+
+  .logo {
+    width: 80px;
+  }
+
+  .form-control.input-azul {
+    padding: 6px 30px 6px 6px;
+  }
+
+  .btn-iniciar {
+    padding: 6px;
+  }
+}
+
+/* Orientación landscape en móviles */
+@media (max-height: 600px) and (orientation: landscape) {
+  .login-container {
+    flex-direction: row;
+    height: auto;
+    min-height: 100vh;
+  }
+
+  .left-section,
+  .right-section {
+    height: 100vh;
+    width: 50%;
+  }
+
+  .left-section {
+    padding: 20px;
+  }
+
+  .right-section {
+    padding: 20px;
+  }
+
+  .logo {
+    width: 80px;
+    margin-bottom: 10px;
+  }
+
+  .bienvenido-text {
+    font-size: 1.5rem;
+    margin-top: -10px;
+  }
+
+  .titulo-derecha {
+    font-size: 1.3rem;
+    top: 0;
+    left: 0;
+    margin-bottom: 20px;
   }
 }

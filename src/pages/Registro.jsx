@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import "./Registro.css";
+import ApiRegistro from "../services/apiRegistro";
+import "../styles/Registro.css";
 
 function Registro() {
   const navigate = useNavigate();
@@ -155,24 +156,13 @@ function Registro() {
 
     try {
       setLoading(true);
-      const response = await fetch("http://localhost:5149/api/v1/Auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        showToast(errorData.message || "Error al registrar.", "error");
-        setLoading(false);
-        return;
-      }
+      await ApiRegistro.registrarUsuario(payload);
 
       showToast("Registro exitoso. Redirigiendo...", "success");
       setTimeout(() => navigate("/"), 1500);
     } catch (error) {
       console.error("Error:", error);
-      showToast("Error de conexión con el servidor.", "error");
+      showToast(error.message || "Error de conexión con el servidor.", "error");
     } finally {
       setLoading(false);
     }

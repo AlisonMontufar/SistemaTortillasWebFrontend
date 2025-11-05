@@ -1,0 +1,60 @@
+/* Navbar.css - Estilos del componente Navbar */
+
+.navbar {
+  background: linear-gradient(135deg, #ff9800 0%, #fb8c00 100%);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.2rem 2.5rem;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  position: relative;
+  z-index: 10;
+  height: 75px;
+}
+
+.navbar-right {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: 1px;
+  text-transform: capitalize;
+  text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.navbar-left {
+  font-size: 1.05rem;
+  color: #ffffff;
+  font-weight: 600;
+  background-color: rgba(255, 255, 255, 0.25);
+  padding: 0.7rem 1.8rem;
+  border-radius: 25px;
+  letter-spacing: 0.3px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.navbar-left:hover {
+  background-color: rgba(255, 255, 255, 0.35);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .navbar {
+    flex-direction: column;
+    gap: 0.8rem;
+    padding: 1rem;
+    height: auto;
+  }
+
+  .navbar-right {
+    font-size: 1.4rem;
+  }
+
+  .navbar-left {
+    font-size: 0.9rem;
+    padding: 0.5rem 1.2rem;
+  }
+}

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import "./Login.css";
+import ApiAuth from "../services/apiAuth";
+import "../styles/Login.css";
 import logo from "../assets/logo.png";
 
 function Login() {
@@ -89,32 +90,20 @@ function Login() {
 
     try {
       setLoading(true);
-      const response = await fetch("http://localhost:5149/api/v1/Auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          identificador: usuario.trim(),
-          contrasenaUsuario: contrasena,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        showToast(data.message || "Usuario o contraseña incorrectos.", "error");
-        setLoading(false);
-        return;
-      }
+      const data = await ApiAuth.login(usuario, contrasena);
 
       // Guardar token y nombreUsuario en localStorage
       localStorage.setItem("token", data.token);
       localStorage.setItem("nombreUsuario", usuario.trim());
+      // Nota: Si necesitas el ID del usuario, debería venir en la respuesta del servidor
+      // localStorage.setItem("usuarioId", data.usuarioId); 
 
       showToast("Inicio de sesión exitoso", "success");
       setTimeout(() => navigate("/inicio"), 1000);
     } catch (err) {
       console.error(err);
-      showToast("Ocurrió un error, inténtalo más tarde.", "error");
+      showToast(err.message || "Ocurrió un error, inténtalo más tarde.", "error");
+    } finally {
       setLoading(false);
     }
   };

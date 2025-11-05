@@ -1,3 +1,4 @@
+/* Contenedor principal */
 .pedidos-container {
     font-family: Arial, sans-serif;
     height: 100vh;
@@ -7,88 +8,14 @@
     overflow: hidden;
 }
 
-.navbar {
-    background-color: #f39c12;
-    color: white;
-    padding: 15px 30px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-weight: bold;
-}
-
-.navbar-left {
-    font-size: 20px;
-}
-
-.navbar-right {
-    font-size: 16px;
-}
-
+/* Wrapper para sidebar + contenido */
 .content-wrapper {
     display: flex;
     flex: 1;
     overflow: hidden;
 }
 
-.sidebar {
-    width: 200px;
-    background-color: #f5b041;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    padding: 20px 0;
-}
-
-.sidebar-top {
-    padding: 15px 20px;
-    font-weight: bold;
-    font-size: 16px;
-    color: #333;
-}
-
-.sidebar-items {
-    display: flex;
-    flex-direction: column;
-}
-
-.sidebar-item {
-    display: flex;
-    align-items: center;
-    padding: 12px 20px;
-    cursor: pointer;
-    transition: background-color 0.2s;
-    color: #333;
-}
-
-.sidebar-item:hover {
-    background-color: #f0a830;
-}
-
-.sidebar-item.active {
-    background-color: #e8a52e;
-    font-weight: bold;
-}
-
-.icon {
-    width: 20px;
-    height: 20px;
-    margin-right: 10px;
-}
-
-.logout {
-    display: flex;
-    align-items: center;
-    padding: 12px 20px;
-    cursor: pointer;
-    color: #333;
-    transition: background-color 0.2s;
-}
-
-.logout:hover {
-    background-color: #f0a830;
-}
-
+/* Área principal de contenido */
 .main-content {
     flex: 1;
     padding: 30px;
@@ -96,6 +23,7 @@
     overflow-y: auto;
 }
 
+/* Header con búsqueda y botón */
 .header {
     display: flex;
     justify-content: space-between;
@@ -103,6 +31,7 @@
     margin-bottom: 20px;
 }
 
+/* Contenedor de búsqueda */
 .search-container {
     position: relative;
     width: 300px;
@@ -132,6 +61,7 @@
     cursor: pointer;
 }
 
+/* Botón agregar */
 .add-button {
     background-color: #f39c12;
     color: white;
@@ -148,6 +78,7 @@
     background-color: #e67e22;
 }
 
+/* Título de sección */
 .title {
     font-size: 18px;
     margin-bottom: 20px;
@@ -155,6 +86,7 @@
     font-weight: bold;
 }
 
+/* Tabla de pedidos */
 .table-container {
     overflow-x: auto;
 }
@@ -193,6 +125,7 @@
     color: #333;
 }
 
+/* Badges de estatus */
 .status {
     padding: 5px 10px;
     border-radius: 3px;
@@ -211,6 +144,7 @@
     color: #155724;
 }
 
+/* Botón de acción */
 .action-button {
     background-color: #17a2b8;
     color: white;
@@ -225,4 +159,82 @@
 
 .action-button:hover {
     background-color: #138496;
+}
+
+.spinner {
+    text-align: center;
+    font-weight: bold;
+    font-size: 18px;
+    padding: 30px 0;
+    color: #f39c12;
+}
+
+.error {
+    color: red;
+    font-weight: bold;
+    padding: 20px 0;
+}
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    padding: 20px;
+}
+
+.modal-content {
+    background-color: white;
+    border-radius: 8px;
+    width: 100%;
+    max-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+}
+
+.modal-content h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-size: 20px;
+    color: #333;
+}
+
+.modal-content ul {
+    list-style: none;
+    padding-left: 0;
+}
+
+.modal-content li {
+    padding: 10px 0;
+    border-bottom: 1px solid #eee;
+    font-size: 14px;
+    color: #555;
+}
+
+.modal-content li:last-child {
+    border-bottom: none;
+}
+
+.modal-content button {
+    margin-top: 20px;
+    background-color: #f39c12;
+    color: white;
+    border: none;
+    padding: 10px 25px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.2s;
+}
+
+.modal-content button:hover {
+    background-color: #e67e22;
 }

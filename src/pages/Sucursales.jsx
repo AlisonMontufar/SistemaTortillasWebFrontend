@@ -1,26 +1,14 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import "./Sucursales.css";
+import ApiSucursales from "../services/apiSucursales";
+import GeocodingService from "../services/geocodingService";
+import "../styles/Sucursales.css";
 import Swal from "sweetalert2";
+import Navbar from "../components/Navbar";
+import Sidebar from "../components/Sidebar";
 
-const icons = {
-    inicio: "https://cdn-icons-png.flaticon.com/512/25/25694.png",
-    pedidos: "https://cdn-icons-png.flaticon.com/512/2910/2910762.png",
-    sucursales: "https://cdn-icons-png.flaticon.com/512/13159/13159030.png",
-    configuracion: "https://cdn-icons-png.flaticon.com/512/2099/2099058.png",
-    search: "https://cdn-icons-png.flaticon.com/512/54/54481.png",
-    edit: "https://cdn-icons-png.flaticon.com/512/1827/1827933.png",
-    delete: "https://cdn-icons-png.flaticon.com/512/3221/3221897.png",
-    map: "https://cdn-icons-png.flaticon.com/512/854/854878.png",
-    close: "https://cdn-icons-png.flaticon.com/512/1828/1828778.png"
-};
-
-// Configuración de la API
-const API_BASE_URL = "http://localhost:5149";
-
-// Icono personalizado para los marcadores
+// Configuración de iconos de Leaflet
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
     iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
@@ -29,8 +17,7 @@ L.Icon.Default.mergeOptions({
 });
 
 function Sucursales() {
-    const usuario = localStorage.getItem("nombreUsuario") || "TOKS";
-    const navigate = useNavigate();
+    const [empresas, setEmpresas] = useState([]);
     const [searchTerm, setSearchTerm] = useState("");
     const [showModal, setShowModal] = useState(false);
     const [showMapModal, setShowMapModal] = useState(false);
@@ -39,8 +26,7 @@ function Sucursales() {
     const [sucursalesData, setSucursalesData] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-    const [coordinates, setCoordinates] = useState({ lat: 20.0539, lng: -99.3095 }); // Coordenadas de Tula como default
-
+    const [coordinates, setCoordinates] = useState({ lat: 20.0539, lng: -99.3095 });
     const mapRef = useRef(null);
     const mapInstanceRef = useRef(null);
     const markerRef = useRef(null);
@@ -49,70 +35,49 @@ function Sucursales() {
 
     // Estado del formulario
     const [formData, setFormData] = useState({
-        emailEncargado: "",
         nombreSucursal: "",
-        estado: "",
-        municipio: "",
-        colonia: "",
+        telefono: "",
+        correoElectronico: "",
+        nombreEncargado: "",
+        fkEmpresa: 1,
         calle: "",
-        codigoPostal: "",
-        numeroInterior: "",
-        numeroExterior: "",
+        numero: "",
+        colonia: "",
+        ciudad: "",
+        estado: "",
+        cp: "",
         referencias: ""
     });
 
-    // Cargar sucursales al montar el componente
+    // Cargar datos iniciales
     useEffect(() => {
         fetchSucursales();
+        fetchEmpresas();
     }, []);
 
-    // Función para geocodificar dirección usando Nominatim (OpenStreetMap)
-    const geocodeAddress = async (address) => {
-        try {
-            const response = await fetch(
-                `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`
-            );
-            const data = await response.json();
-            if (data && data.length > 0) {
-                return {
-                    lat: parseFloat(data[0].lat),
-                    lng: parseFloat(data[0].lon)
-                };
-            }
-            return null;
-        } catch (error) {
-            console.error("Error geocodificando:", error);
-            return null;
-        }
-    };
-
-    // Inicializar mapa y marcador al abrir modal
+    // Inicializar mapa del modal
     useEffect(() => {
         if (!showModal || !mapRef.current || mapInstanceRef.current) return;
 
-        // Crear mapa
         mapInstanceRef.current = L.map(mapRef.current).setView([coordinates.lat, coordinates.lng], 15);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap contributors'
         }).addTo(mapInstanceRef.current);
 
-        // Crear marcador
         markerRef.current = L.marker([coordinates.lat, coordinates.lng], { draggable: true }).addTo(mapInstanceRef.current);
 
-        // Eventos del marcador
         markerRef.current.on('dragend', (e) => {
             const pos = e.target.getLatLng();
             setCoordinates({ lat: pos.lat, lng: pos.lng });
-            reverseGeocode(pos.lat, pos.lng); // <-- llenar campos
+            reverseGeocode(pos.lat, pos.lng);
         });
 
-        // Eventos del mapa
         mapInstanceRef.current.on('click', (e) => {
             const { lat, lng } = e.latlng;
             setCoordinates({ lat, lng });
             if (markerRef.current) markerRef.current.setLatLng([lat, lng]);
-            reverseGeocode(lat, lng); // <-- llenar campos
+            reverseGeocode(lat, lng);
         });
 
         return () => {
@@ -124,30 +89,19 @@ function Sucursales() {
         };
     }, [showModal, coordinates.lat, coordinates.lng]);
 
-    // Actualizar marcador si coordinates cambian desde fuera
+    // Actualizar marcador cuando cambian las coordenadas
     useEffect(() => {
-        if (markerRef.current && mapInstanceRef.current) {
-            markerRef.current.setLatLng([coordinates.lat, coordinates.lng]);
-            mapInstanceRef.current.setView([coordinates.lat, coordinates.lng]);
-        }
-    }, [coordinates]);
-
-    // Actualizar mapa cuando cambian las coordenadas o la dirección
-    useEffect(() => {
-        if (mapInstanceRef.current && coordinates) {
-            mapInstanceRef.current.setView([coordinates.lat, coordinates.lng], 16);
-            if (markerRef.current) {
-                markerRef.current.setLatLng([coordinates.lat, coordinates.lng]);
-            }
-        }
+        if (!mapInstanceRef.current || !markerRef.current) return;
+        markerRef.current.setLatLng([coordinates.lat, coordinates.lng]);
+        mapInstanceRef.current.setView([coordinates.lat, coordinates.lng]);
     }, [coordinates]);
 
     // Geocodificar dirección cuando cambian los campos
     useEffect(() => {
         const updateCoordinates = async () => {
-            if (formData.calle && formData.municipio && formData.estado) {
-                const address = `${formData.calle} ${formData.numeroExterior}, ${formData.colonia}, ${formData.municipio}, ${formData.estado}, México`;
-                const coords = await geocodeAddress(address);
+            if (formData.calle && formData.ciudad && formData.estado) {
+                const address = `${formData.calle} ${formData.numero}, ${formData.colonia}, ${formData.ciudad}, ${formData.estado}, México`;
+                const coords = await GeocodingService.geocodeAddress(address);
                 if (coords) {
                     setCoordinates(coords);
                 }
@@ -156,26 +110,14 @@ function Sucursales() {
 
         const timeoutId = setTimeout(updateCoordinates, 1000);
         return () => clearTimeout(timeoutId);
-    }, [formData.calle, formData.municipio, formData.estado, formData.colonia, formData.numeroExterior]);
+    }, [formData.calle, formData.ciudad, formData.estado, formData.colonia, formData.numero]);
 
-    // GET: Obtener todas las sucursales
+    // Funciones de API
     const fetchSucursales = async () => {
         setLoading(true);
         setError(null);
         try {
-            const response = await fetch(`${API_BASE_URL}/api/v1/Sucursal`, {
-                method: "GET",
-                headers: {
-                    "Content-Type": "application/json",
-                    // "Authorization": `Bearer ${localStorage.getItem("token")}`
-                }
-            });
-
-            if (!response.ok) {
-                throw new Error(`Error al obtener sucursales: ${response.status}`);
-            }
-
-            const data = await response.json();
+            const data = await ApiSucursales.obtenerSucursales();
             setSucursalesData(data);
         } catch (err) {
             setError(err.message);
@@ -185,38 +127,39 @@ function Sucursales() {
         }
     };
 
-    // POST: Crear nueva sucursal
-    const createSucursal = async (data) => {
+    const fetchEmpresas = async () => {
+        try {
+            const data = await ApiSucursales.obtenerEmpresas();
+            setEmpresas(data);
+        } catch (err) {
+            console.error("Error fetching empresas:", err);
+        }
+    };
+
+    const handleCreateSucursal = async (data) => {
         setLoading(true);
         setError(null);
         try {
-            const response = await fetch(`${API_BASE_URL}/api/v1/Sucursal`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    emailEncargado: data.emailEncargado,
-                    nombreSucursal: data.nombreSucursal,
-                    nombreEmpresa: data.nombreEmpresa,
-                    estado: data.estado,
-                    municipio: data.municipio,
-                    colonia: data.colonia,
-                    calle: data.calle,
-                    codigoPostal: data.codigoPostal,
-                    numeroInterior: data.numeroInterior,
-                    numeroExterior: data.numeroExterior,
-                    referencias: data.referencias
-                })
-            });
+            const sucursalData = {
+                nombreSucursal: data.nombreSucursal,
+                telefono: data.telefono,
+                correoElectronico: data.correoElectronico,
+                nombreEncargado: data.nombreEncargado,
+                fkEmpresa: data.fkEmpresa
+            };
 
-            if (!response.ok) {
-                throw new Error(`Error al crear sucursal: ${response.status}`);
-            }
+            const direccionData = {
+                calle: data.calle,
+                numero: data.numero,
+                colonia: data.colonia,
+                ciudad: data.ciudad,
+                estado: data.estado,
+                cp: data.cp,
+                referencias: data.referencias
+            };
 
-            const result = await response.json();
+            await ApiSucursales.crearSucursal(sucursalData, direccionData);
             await fetchSucursales();
-            return result;
         } catch (err) {
             setError(err.message);
             console.error("Error creating sucursal:", err);
@@ -226,38 +169,33 @@ function Sucursales() {
         }
     };
 
-    // PUT: Actualizar sucursal existente
-    const updateSucursal = async (data) => {
+    const handleUpdateSucursal = async (data) => {
         setLoading(true);
         setError(null);
         try {
-            const response = await fetch(`${API_BASE_URL}/api/v1/Sucursal`, {
-                method: "PUT",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    empresaId: selectedSucursal.empresaId || selectedSucursal.id,
-                    nombreSucursal: data.nombreSucursal,
-                    emailEncargado: data.emailEncargado,
-                    estado: data.estado,
-                    municipio: data.municipio,
-                    colonia: data.colonia,
-                    calle: data.calle,
-                    codigoPostal: data.codigoPostal,
-                    numeroInterior: data.numeroInterior,
-                    numeroExterior: data.numeroExterior,
-                    referencias: data.referencias
-                })
-            });
+            const sucursalId = selectedSucursal.sucursalId || selectedSucursal.id;
 
-            if (!response.ok) {
-                throw new Error(`Error al actualizar sucursal: ${response.status}`);
-            }
+            const sucursalData = {
+                nombreSucursal: data.nombreSucursal,
+                telefono: data.telefono,
+                correoElectronico: data.correoElectronico,
+                nombreEncargado: data.nombreEncargado,
+                fkEmpresa: data.fkEmpresa,
+                estatus: selectedSucursal.estatus || 1
+            };
 
-            const result = await response.json();
+            const direccionData = {
+                calle: data.calle,
+                numero: data.numero,
+                colonia: data.colonia,
+                ciudad: data.ciudad,
+                estado: data.estado,
+                cp: data.cp,
+                referencias: data.referencias
+            };
+
+            await ApiSucursales.actualizarSucursal(sucursalId, sucursalData, direccionData);
             await fetchSucursales();
-            return result;
         } catch (err) {
             setError(err.message);
             console.error("Error updating sucursal:", err);
@@ -267,22 +205,11 @@ function Sucursales() {
         }
     };
 
-    // DELETE: Eliminar sucursal
-    const deleteSucursal = async (empresaId) => {
+    const handleDeleteSucursal = async (sucursalId) => {
         setLoading(true);
         setError(null);
         try {
-            const response = await fetch(`${API_BASE_URL}/api/v1/Sucursal/${empresaId}`, {
-                method: "DELETE",
-                headers: {
-                    "Content-Type": "application/json",
-                }
-            });
-
-            if (!response.ok) {
-                throw new Error(`Error al eliminar sucursal: ${response.status}`);
-            }
-
+            await ApiSucursales.eliminarSucursal(sucursalId);
             await fetchSucursales();
         } catch (err) {
             setError(err.message);
@@ -293,18 +220,13 @@ function Sucursales() {
         }
     };
 
-    const handleLogout = () => {
-        localStorage.removeItem("token");
-        localStorage.removeItem("nombreUsuario");
-        navigate("/");
-    };
-
+    // Funciones de UI
     const handleInputChange = (e) => {
         const { name, value } = e.target;
         let newValue = value;
 
-        const soloLetras = ["estado", "municipio", "colonia", "nombreSucursal", "nombreEmpresa"];
-        const soloNumeros = ["codigoPostal", "numeroInterior", "numeroExterior"];
+        const soloLetras = ["estado", "ciudad", "colonia", "nombreSucursal", "nombreEncargado"];
+        const soloNumeros = ["cp", "telefono"];
 
         if (soloLetras.includes(name)) {
             newValue = value.replace(/[^A-Za-zÁÉÍÓÚáéíóúÑñ\s]/g, "");
@@ -320,62 +242,63 @@ function Sucursales() {
 
     const resetForm = () => {
         setFormData({
-            emailEncargado: "",
             nombreSucursal: "",
-            estado: "",
-            municipio: "",
-            colonia: "",
+            telefono: "",
+            correoElectronico: "",
+            nombreEncargado: "",
+            fkEmpresa: 1,
             calle: "",
-            codigoPostal: "",
-            numeroInterior: "",
-            numeroExterior: "",
+            numero: "",
+            colonia: "",
+            ciudad: "",
+            estado: "",
+            cp: "",
             referencias: ""
         });
         setCoordinates({ lat: 20.0539, lng: -99.3095 });
     };
 
-    const handleEditSucursal = async (sucursal) => {
+    const handleEditSucursal = (sucursal) => {
         setModalMode("editar");
         setSelectedSucursal(sucursal);
         setFormData({
-            emailEncargado: sucursal.emailEncargado || "",
             nombreSucursal: sucursal.nombreSucursal || "",
-            estado: sucursal.estado || "",
-            municipio: sucursal.municipio || "",
-            colonia: sucursal.colonia || "",
-            calle: sucursal.calle || "",
-            codigoPostal: sucursal.codigoPostal || "",
-            numeroInterior: sucursal.numeroInterior || "",
-            numeroExterior: sucursal.numeroExterior || "",
-            referencias: sucursal.referencias || ""
+            telefono: sucursal.telefono || "",
+            correoElectronico: sucursal.correoElectronico || "",
+            nombreEncargado: sucursal.nombreEncargado || "",
+            fkEmpresa: sucursal.fkEmpresa || 1,
+            calle: "",
+            numero: "",
+            colonia: "",
+            ciudad: "",
+            estado: "",
+            cp: "",
+            referencias: ""
         });
-
-        // Geocodificar la dirección de la sucursal
-        const address = `${sucursal.calle} ${sucursal.numeroExterior}, ${sucursal.colonia}, ${sucursal.municipio}, ${sucursal.estado}, México`;
-        const coords = await geocodeAddress(address);
-        if (coords) {
-            setCoordinates(coords);
-        }
-
         setShowModal(true);
+
+        setTimeout(() => {
+            if (formData.lat && formData.lng) {
+                setCoordinates({ lat: formData.lat, lng: formData.lng });
+            }
+        }, 100);
     };
 
-    const handleDeleteSucursal = async (sucursalId) => {
+    const handleDeleteSucursalConfirm = async (sucursalId) => {
         const result = await Swal.fire({
             title: '¿Está seguro?',
             text: 'Esta acción eliminará la sucursal permanentemente.',
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonColor: '#3085d6',
-            cancelButtonColor: '#d33',
+            confirmButtonColor: '#e74c3c',
+            cancelButtonColor: '#95a5a6',
             confirmButtonText: 'Sí, eliminar',
             cancelButtonText: 'Cancelar'
         });
 
         if (result.isConfirmed) {
             try {
-                await deleteSucursal(sucursalId);
-
+                await handleDeleteSucursal(sucursalId);
                 await Swal.fire({
                     title: 'Eliminado',
                     text: 'La sucursal se eliminó correctamente.',
@@ -383,8 +306,6 @@ function Sucursales() {
                     timer: 2000,
                     showConfirmButton: false
                 });
-
-                // Si tienes una función para recargar la lista:
                 fetchSucursales();
             } catch (err) {
                 await Swal.fire({
@@ -396,13 +317,11 @@ function Sucursales() {
         }
     };
 
-    // Función para abrir el modal con todas las sucursales en el mapa
     const handleVerMapa = async () => {
         setShowMapModal(true);
 
         const initMap = async () => {
             if (!allMapRef.current) {
-                // Esperar un frame y volver a intentar
                 requestAnimationFrame(initMap);
                 return;
             }
@@ -414,26 +333,22 @@ function Sucursales() {
                     attribution: '© OpenStreetMap contributors'
                 }).addTo(allMapInstanceRef.current);
 
-                // Geocodificar todas las sucursales en paralelo
                 const coordsArray = await Promise.all(
                     sucursalesData.map(async (sucursal) => {
-                        const address = `${sucursal.calle} ${sucursal.numeroExterior}, ${sucursal.colonia}, ${sucursal.municipio}, ${sucursal.estado}, México`;
-                        const coords = await geocodeAddress(address);
+                        const address = `${sucursal.nombreSucursal}, México`;
+                        const coords = await GeocodingService.geocodeAddress(address);
                         return { sucursal, coords };
                     })
                 );
 
-                // Agregar marcadores válidos
                 coordsArray.forEach(({ sucursal, coords }) => {
                     if (coords) {
                         const marker = L.marker([coords.lat, coords.lng]).addTo(allMapInstanceRef.current);
                         marker.bindPopup(`
                         <div style="text-align: center;">
                             <strong>${sucursal.nombreSucursal}</strong><br/>
-                            ${sucursal.calle} ${sucursal.numeroExterior}<br/>
-                            ${sucursal.colonia}, ${sucursal.municipio}<br/>
-                            ${sucursal.estado}<br/>
-                            <small>${sucursal.emailEncargado}</small>
+                            <small>${sucursal.correoElectronico}</small><br/>
+                            <small>${sucursal.telefono}</small>
                         </div>
                     `);
                     }
@@ -444,7 +359,6 @@ function Sucursales() {
         initMap();
     };
 
-    // Función para cerrar el modal y limpiar el mapa
     const handleCloseMapModal = () => {
         setShowMapModal(false);
         if (allMapInstanceRef.current) {
@@ -455,19 +369,11 @@ function Sucursales() {
 
     const reverseGeocode = async (lat, lng) => {
         try {
-            const response = await fetch(
-                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`
-            );
-            const data = await response.json();
-            if (data && data.address) {
-                const addr = data.address;
+            const addressData = await GeocodingService.reverseGeocode(lat, lng);
+            if (addressData) {
                 setFormData((prev) => ({
                     ...prev,
-                    calle: addr.road || "",
-                    colonia: addr.suburb || addr.neighbourhood || "",
-                    municipio: addr.city || addr.town || addr.village || "",
-                    estado: addr.state || "",
-                    codigoPostal: addr.postcode || "",
+                    ...addressData
                 }));
             }
         } catch (error) {
@@ -490,43 +396,45 @@ function Sucursales() {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
+        const coords = await GeocodingService.geocodeAddress(`${formData.calle} ${formData.numero}, ${formData.colonia}, ${formData.ciudad}, ${formData.estado}, México`);
+        if (coords) setCoordinates(coords);
+
         const validationErrors = validateForm();
         if (validationErrors.length > 0) {
             await Swal.fire({
                 title: "Errores de validación",
                 html: validationErrors.join("<br/>"),
                 icon: "error",
-                confirmButtonColor: "#d33"
+                confirmButtonColor: "#e74c3c"
             });
             return;
         }
 
         try {
             if (modalMode === "crear") {
-                await createSucursal(formData);
+                await handleCreateSucursal(formData);
                 await Swal.fire({
                     title: "¡Éxito!",
                     text: "La sucursal se creó correctamente.",
                     icon: "success",
-                    confirmButtonColor: "#3085d6"
+                    confirmButtonColor: "#27ae60"
                 });
             } else {
-                await updateSucursal(formData);
+                await handleUpdateSucursal(formData);
                 await Swal.fire({
                     title: "¡Actualizado!",
                     text: "La sucursal se actualizó correctamente.",
                     icon: "success",
-                    confirmButtonColor: "#3085d6"
+                    confirmButtonColor: "#27ae60"
                 });
             }
-
             handleCloseModal();
         } catch (err) {
             await Swal.fire({
                 title: "Error",
                 text: `Ocurrió un error al ${modalMode === "crear" ? "crear" : "actualizar"} la sucursal: ${err.message || err}`,
                 icon: "error",
-                confirmButtonColor: "#d33"
+                confirmButtonColor: "#e74c3c"
             });
         }
     };
@@ -534,100 +442,57 @@ function Sucursales() {
     const filteredSucursales = sucursalesData.filter(sucursal =>
         searchTerm === "" ||
         (sucursal.nombreSucursal && sucursal.nombreSucursal.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (sucursal.empresaId && sucursal.empresaId.toString().includes(searchTerm)) ||
-        (sucursal.emailEncargado && sucursal.emailEncargado.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (sucursal.municipio && sucursal.municipio.toLowerCase().includes(searchTerm.toLowerCase()))
+        (sucursal.correoElectronico && sucursal.correoElectronico.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (sucursal.nombreEncargado && sucursal.nombreEncargado.toLowerCase().includes(searchTerm.toLowerCase()))
     );
 
     const validateForm = () => {
         const errors = [];
-
-        // Campos obligatorios
         if (!formData.nombreSucursal) errors.push("El nombre de la sucursal es obligatorio.");
-        if (modalMode === "crear" && !formData.nombreEmpresa) errors.push("El nombre de la empresa es obligatorio.");
-        if (!formData.estado) errors.push("El estado es obligatorio.");
-        if (!formData.municipio) errors.push("El municipio es obligatorio.");
-        if (!formData.colonia) errors.push("La colonia es obligatoria.");
-        if (!formData.calle) errors.push("La calle es obligatoria.");
-        if (!formData.codigoPostal) errors.push("El código postal es obligatorio.");
+        if (!formData.correoElectronico) errors.push("El correo electrónico es obligatorio.");
+        if (!formData.nombreEncargado) errors.push("El nombre del encargado es obligatorio.");
+        if (!formData.telefono) errors.push("El teléfono es obligatorio.");
 
-        // Validación de formato de CP (5 dígitos)
-        const cpRegex = /^\d{5}$/;
-        if (formData.codigoPostal && !cpRegex.test(formData.codigoPostal)) {
-            errors.push("El código postal debe tener 5 dígitos.");
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (formData.correoElectronico && !emailRegex.test(formData.correoElectronico)) {
+            errors.push("El correo electrónico no es válido.");
         }
 
-        // Validación de consistencia: ejemplo simple que CP y Municipio coincidan
-        const cpMunicipioMap = {
-            "42800": "Tula de Allende",
-            "42000": "Pachuca",
-            // agregar más combinaciones según tus datos
-        };
-
-        if (formData.codigoPostal && formData.municipio) {
-            const expectedMunicipio = cpMunicipioMap[formData.codigoPostal];
-            if (expectedMunicipio && expectedMunicipio !== formData.municipio) {
-                errors.push(`El código postal ${formData.codigoPostal} no coincide con el municipio ${formData.municipio}.`);
-            }
+        if (formData.telefono && !/^\d{10}$/.test(formData.telefono)) {
+            errors.push("El teléfono debe tener 10 dígitos numéricos.");
         }
 
         return errors;
     };
 
+    // Definir los íconos que se usan en el JSX
+    const icons = {
+        search: "https://cdn-icons-png.flaticon.com/512/54/54481.png",
+        edit: "https://cdn-icons-png.flaticon.com/512/1827/1827933.png",
+        delete: "https://cdn-icons-png.flaticon.com/512/3221/3221897.png",
+        map: "https://cdn-icons-png.flaticon.com/512/854/854878.png",
+        close: "https://cdn-icons-png.flaticon.com/512/1828/1828778.png"
+    };
+
     return (
         <div className="sucursales-container">
-            <nav className="navbar">
-                <div className="navbar-left">Sistema de Pedidos</div>
-                <div className="navbar-right">Hola de nuevo {usuario}!</div>
-            </nav>
+            <Navbar />
 
             <div className="content-wrapper">
-                <aside className="sidebar">
-                    <div>
-                        <div className="sidebar-top">Menú</div>
-                        <div className="sidebar-items">
-                            <div className="sidebar-item" onClick={() => navigate("/inicio")}>
-                                <img src={icons.inicio} alt="Inicio" className="icon" />
-                                <span>Inicio</span>
-                            </div>
-                            <div className="sidebar-item" onClick={() => navigate("/pedidos")}>
-                                <img src={icons.pedidos} alt="Pedidos" className="icon" />
-                                <span>Pedidos</span>
-                            </div>
-                            <div className="sidebar-item active">
-                                <img src={icons.sucursales} alt="Sucursales" className="icon" />
-                                <span>Sucursales</span>
-                            </div>
-                            <div className="sidebar-item">
-                                <img src={icons.configuracion} alt="Configuraciones" className="icon" />
-                                <span>Configuraciones</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="logout" onClick={handleLogout}>
-                        <img
-                            src="https://cdn-icons-png.flaticon.com/512/1828/1828427.png"
-                            alt="Salir"
-                            className="icon"
-                        />
-                        <span>Salir</span>
-                    </div>
-                </aside>
+                <Sidebar />
 
                 <main className="main-content">
-                    <h2 className="page-title">Mis Sucursales</h2>
+                    <div className="page-header">
+                        <h2 className="page-title">
+                            <span className="title-icon">🏪</span>
+                            Gestión de Sucursales
+                        </h2>
+                        <p className="page-subtitle">Administra todas las sucursales de tu empresa</p>
+                    </div>
 
                     {error && (
-                        <div style={{
-                            backgroundColor: '#fee',
-                            border: '1px solid #fcc',
-                            color: '#c33',
-                            padding: '10px',
-                            marginBottom: '15px',
-                            borderRadius: '4px'
-                        }}>
-                            Error: {error}
+                        <div className="error-banner">
+                            <strong>Error:</strong> {error}
                         </div>
                     )}
 
@@ -636,7 +501,7 @@ function Sucursales() {
                             <img src={icons.search} alt="Buscar" className="search-icon-left" />
                             <input
                                 type="text"
-                                placeholder="Buscar sucursal..."
+                                placeholder="Buscar por nombre, correo o encargado..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 className="search-input"
@@ -644,19 +509,21 @@ function Sucursales() {
                         </div>
                         <div className="header-buttons">
                             <button className="map-button" onClick={handleVerMapa}>
-                                Ver Sucursales en Mapa
+                                <img src={icons.map} alt="Mapa" className="button-icon" />
+                                Ver en Mapa
                             </button>
-
                             <button className="add-button" onClick={handleAgregarSucursal}>
-                                + Agregar
+                                <span className="plus-icon">+</span>
+                                Nueva Sucursal
                             </button>
                         </div>
                     </div>
 
                     <div className="table-container">
                         {loading ? (
-                            <div style={{ textAlign: 'center', padding: '20px' }}>
-                                Cargando sucursales...
+                            <div className="loading-state">
+                                <div className="spinner"></div>
+                                <p>Cargando sucursales...</p>
                             </div>
                         ) : (
                             <table className="table">
@@ -664,31 +531,29 @@ function Sucursales() {
                                     <tr className="table-header">
                                         <th>ID</th>
                                         <th>Nombre Sucursal</th>
-                                        <th>Dirección</th>
-                                        <th>Municipio</th>
-                                        <th>CP</th>
-                                        <th>Email Encargado</th>
+                                        <th>Encargado</th>
+                                        <th>Correo</th>
+                                        <th>Teléfono</th>
                                         <th>Acciones</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {filteredSucursales.length === 0 ? (
                                         <tr>
-                                            <td colSpan="7" style={{ textAlign: 'center', padding: '20px' }}>
-                                                No hay sucursales disponibles
+                                            <td colSpan="6" className="empty-state">
+                                                <div className="empty-icon">📭</div>
+                                                <p>No hay sucursales disponibles</p>
+                                                <small>Comienza agregando una nueva sucursal</small>
                                             </td>
                                         </tr>
                                     ) : (
                                         filteredSucursales.map((sucursal, index) => (
                                             <tr key={index} className="table-row">
-                                                <td>{sucursal.empresaId || sucursal.id}</td>
-                                                <td>{sucursal.nombreSucursal}</td>
-                                                <td>
-                                                    {`${sucursal.calle || ''} ${sucursal.numeroExterior || ''}, ${sucursal.colonia || ''}`}
-                                                </td>
-                                                <td>{sucursal.municipio}</td>
-                                                <td>{sucursal.codigoPostal}</td>
-                                                <td>{sucursal.emailEncargado}</td>
+                                                <td><span className="table-badge">{sucursal.sucursalId || sucursal.id}</span></td>
+                                                <td><strong>{sucursal.nombreSucursal}</strong></td>
+                                                <td>{sucursal.nombreEncargado}</td>
+                                                <td>{sucursal.correoElectronico}</td>
+                                                <td>{sucursal.telefono}</td>
                                                 <td>
                                                     <div className="action-buttons">
                                                         <button
@@ -700,7 +565,7 @@ function Sucursales() {
                                                         </button>
                                                         <button
                                                             className="icon-button delete-button"
-                                                            onClick={() => handleDeleteSucursal(sucursal.empresaId || sucursal.id)}
+                                                            onClick={() => handleDeleteSucursalConfirm(sucursal.sucursalId || sucursal.id)}
                                                             title="Eliminar"
                                                         >
                                                             <img src={icons.delete} alt="Eliminar" className="action-icon" />
@@ -722,9 +587,9 @@ function Sucursales() {
                 <div className="modal-overlay" onClick={handleCloseMapModal}>
                     <div className="modal-content modal-map-large" onClick={(e) => e.stopPropagation()}>
                         <div className="modal-header">
-                            <div className="modal-header-icon">🗺️</div>
-                            <h3>Todas las Sucursales</h3>
-                            <button className="modal-close" onClick={handleCloseMapModal}>
+                            <div className="modal-header-icon"></div>
+                            <h3>Mapa de Sucursales</h3>
+                            <button className="modal-close" onClick={handleCloseMapModal} type="button">
                                 <img src={icons.close} alt="Cerrar" />
                             </button>
                         </div>
@@ -739,29 +604,21 @@ function Sucursales() {
             {/* Modal para Crear/Editar Sucursal */}
             {showModal && (
                 <div className="modal-overlay" onClick={handleCloseModal}>
-                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                    <div className="modal-content modal-form" onClick={(e) => e.stopPropagation()}>
                         <div className="modal-header">
-                            <div className="modal-header-icon">🏢</div>
-                            <h3>{modalMode === "crear" ? "Nueva Sucursal" : `Editar Sucursal`}</h3>
-                            <button className="modal-close" onClick={handleCloseModal}>
+                            <div className="modal-header-icon">
+                                {modalMode === "crear"}
+                            </div>
+                            <h3>{modalMode === "crear" ? "Nueva Sucursal" : "Editar Sucursal"}</h3>
+                            <button className="modal-close" onClick={handleCloseModal} type="button">
                                 <img src={icons.close} alt="Cerrar" />
                             </button>
                         </div>
 
                         <form onSubmit={handleSubmit}>
                             <div className="form-section">
+                                <h4 className="section-title">Información General</h4>
                                 <div className="form-row">
-                                    <div className="form-group">
-                                        <label>Email del Encargado *</label>
-                                        <input
-                                            type="email"
-                                            name="emailEncargado"
-                                            value={formData.emailEncargado}
-                                            onChange={handleInputChange}
-                                            placeholder="encargado@empresa.com"
-                                            required
-                                        />
-                                    </div>
                                     <div className="form-group">
                                         <label>Nombre de la Sucursal *</label>
                                         <input
@@ -769,138 +626,164 @@ function Sucursales() {
                                             name="nombreSucursal"
                                             value={formData.nombreSucursal}
                                             onChange={handleInputChange}
-                                            placeholder="Centro"
+                                            placeholder="Ej: Sucursal Centro"
                                             required
                                         />
                                     </div>
+                                    <div className="form-group">
+                                        <label>Nombre del Encargado *</label>
+                                        <input
+                                            type="text"
+                                            name="nombreEncargado"
+                                            value={formData.nombreEncargado}
+                                            onChange={handleInputChange}
+                                            placeholder="Ej: Juan Pérez"
+                                            required
+                                        />
+                                    </div>
+                                </div>
 
-                                    {modalMode === "crear" && (
-                                        <div className="form-group">
-                                            <label>Nombre de la Empresa *</label>
-                                            <input
-                                                type="text"
-                                                name="nombreEmpresa"
-                                                value={formData.nombreEmpresa || ""}
-                                                onChange={handleInputChange}
-                                                placeholder="Ingrese el nombre de la empresa"
-                                                required
-                                            />
-                                        </div>
-                                    )}
-
+                                <div className="form-row">
+                                    <div className="form-group">
+                                        <label>Correo Electrónico *</label>
+                                        <input
+                                            type="email"
+                                            name="correoElectronico"
+                                            value={formData.correoElectronico}
+                                            onChange={handleInputChange}
+                                            placeholder="correo@empresa.com"
+                                            required
+                                        />
+                                    </div>
+                                    <div className="form-group">
+                                        <label>Teléfono *</label>
+                                        <input
+                                            type="text"
+                                            name="telefono"
+                                            value={formData.telefono}
+                                            onChange={handleInputChange}
+                                            placeholder="7731234567"
+                                            maxLength="10"
+                                            required
+                                        />
+                                    </div>
+                                    <div className="form-group">
+                                        <label>Empresa *</label>
+                                        <select
+                                            name="fkEmpresa"
+                                            value={formData.fkEmpresa}
+                                            onChange={handleInputChange}
+                                            required
+                                        >
+                                            <option value="">Selecciona una empresa</option>
+                                            {empresas.map((empresa) => (
+                                                <option key={empresa.id} value={empresa.id}>
+                                                    {empresa.nombreEmpresa}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div className="form-section-with-map">
-                                <div className="form-fields">
-                                    <div className="form-row">
-                                        <div className="form-group">
-                                            <label>Estado *</label>
-                                            <input
-                                                type="text"
-                                                name="estado"
-                                                value={formData.estado}
-                                                onChange={handleInputChange}
-                                                placeholder="Hidalgo"
-                                                required
-                                            />
-                                        </div>
-                                        <div className="form-group">
-                                            <label>Municipio *</label>
-                                            <input
-                                                type="text"
-                                                name="municipio"
-                                                value={formData.municipio}
-                                                onChange={handleInputChange}
-                                                placeholder="Tula de Allende"
-                                                required
-                                            />
-                                        </div>
-                                        <div className="form-group">
-                                            <label>Colonia *</label>
-                                            <input
-                                                type="text"
-                                                name="colonia"
-                                                value={formData.colonia}
-                                                onChange={handleInputChange}
-                                                placeholder="Centro"
-                                                required
-                                            />
-                                        </div>
+                            <div className="form-section">
+                                <h4 className="section-title">Dirección</h4>
+                                <div className="form-row">
+                                    <div className="form-group">
+                                        <label>Calle</label>
+                                        <input
+                                            type="text"
+                                            name="calle"
+                                            value={formData.calle}
+                                            onChange={handleInputChange}
+                                            placeholder="5 de Mayo"
+                                        />
                                     </div>
-
-                                    <div className="form-row">
-                                        <div className="form-group">
-                                            <label>Calle *</label>
-                                            <input
-                                                type="text"
-                                                name="calle"
-                                                value={formData.calle}
-                                                onChange={handleInputChange}
-                                                placeholder="5 de Mayo"
-                                                required
-                                            />
-                                        </div>
-                                        <div className="form-group">
-                                            <label>Código Postal *</label>
-                                            <input
-                                                type="text"
-                                                name="codigoPostal"
-                                                value={formData.codigoPostal}
-                                                onChange={handleInputChange}
-                                                placeholder="42800"
-                                                required
-                                            />
-                                        </div>
-                                        <div className="form-group">
-                                            <label>N. Interior</label>
-                                            <input
-                                                type="text"
-                                                name="numeroInterior"
-                                                value={formData.numeroInterior}
-                                                onChange={handleInputChange}
-                                                placeholder="6"
-                                            />
-                                        </div>
-                                        <div className="form-group">
-                                            <label>N. Exterior</label>
-                                            <input
-                                                type="text"
-                                                name="numeroExterior"
-                                                value={formData.numeroExterior}
-                                                onChange={handleInputChange}
-                                                placeholder="123"
-                                            />
-                                        </div>
+                                    <div className="form-group">
+                                        <label>Número</label>
+                                        <input
+                                            type="text"
+                                            name="numero"
+                                            value={formData.numero}
+                                            onChange={handleInputChange}
+                                            placeholder="123"
+                                        />
                                     </div>
-
-                                    <div className="map-section">
-                                        <label>Ubicación en el Mapa (click para ajustar)</label>
-                                        <div ref={mapRef} style={{ width: '100%', height: '250px', borderRadius: '8px' }}></div>
-                                        <small style={{ color: '#666', marginTop: '5px', display: 'block' }}>
-                                            Lat: {coordinates.lat.toFixed(6)}, Lng: {coordinates.lng.toFixed(6)}
-                                        </small>
+                                    <div className="form-group">
+                                        <label>Colonia</label>
+                                        <input
+                                            type="text"
+                                            name="colonia"
+                                            value={formData.colonia}
+                                            onChange={handleInputChange}
+                                            placeholder="Centro"
+                                        />
                                     </div>
                                 </div>
 
-                                <div className="referencias-section">
-                                    <label>Referencias</label>
-                                    <textarea
-                                        name="referencias"
-                                        value={formData.referencias}
-                                        onChange={handleInputChange}
-                                        rows="8"
-                                        placeholder="Ingrese referencias de ubicación..."
-                                    ></textarea>
+                                <div className="form-row">
+                                    <div className="form-group">
+                                        <label>Ciudad</label>
+                                        <input
+                                            type="text"
+                                            name="ciudad"
+                                            value={formData.ciudad}
+                                            onChange={handleInputChange}
+                                            placeholder="Tula de Allende"
+                                        />
+                                    </div>
+                                    <div className="form-group">
+                                        <label>Estado</label>
+                                        <input
+                                            type="text"
+                                            name="estado"
+                                            value={formData.estado}
+                                            onChange={handleInputChange}
+                                            placeholder="Hidalgo"
+                                        />
+                                    </div>
+                                    <div className="form-group">
+                                        <label>Código Postal</label>
+                                        <input
+                                            type="text"
+                                            name="cp"
+                                            value={formData.cp}
+                                            onChange={handleInputChange}
+                                            placeholder="42800"
+                                            maxLength="5"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="form-row">
+                                    <div className="form-group full-width">
+                                        <label>Referencias</label>
+                                        <textarea
+                                            name="referencias"
+                                            value={formData.referencias}
+                                            onChange={handleInputChange}
+                                            rows="3"
+                                            placeholder="Ingrese referencias adicionales..."
+                                        ></textarea>
+                                    </div>
+                                </div>
+
+                                <div className="map-section">
+                                    <label>Ubicación en el Mapa</label>
+                                    <small className="map-instructions">
+                                        Haz clic en el mapa o arrastra el marcador para ajustar la ubicación
+                                    </small>
+                                    <div
+                                        ref={mapRef}
+                                        style={{ width: '100%', height: '300px', borderRadius: '8px', marginTop: '10px' }}
+                                    ></div>
+                                    <small className="coordinates-info">
+                                        Lat: {coordinates.lat.toFixed(6)}, Lng: {coordinates.lng.toFixed(6)}
+                                    </small>
                                 </div>
                             </div>
 
                             <div className="modal-footer">
-                                {modalMode === "editar" && (
-                                    <button type="button" className="btn-cancel" onClick={handleCloseModal}>
-                                        Cancelar
-                                    </button>
-                                )}
                                 <button
                                     type="submit"
                                     className={modalMode === "crear" ? "btn-guardar" : "btn-actualizar"}

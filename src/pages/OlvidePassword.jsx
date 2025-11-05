@@ -1,24 +1,23 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import "./OlvidePassword.css";
+import ApiPassword from "../services/apiPassword";
+import "../styles/OlvidePassword.css";
 import logo from "../assets/logo.png";
-
-const eyeIcon = "https://cdn-icons-png.flaticon.com/512/709/709612.png";
-const eyeOffIcon = "https://cdn-icons-png.flaticon.com/512/159/159604.png";
+import { FaEye, FaEyeSlash } from "react-icons/fa"; // 👁️ Íconos iguales a login
 
 function OlvidePassword() {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [correo, setCorreo] = useState("");
-  const [token, setToken] = useState("");
+  const [codigo, setCodigo] = useState("");
   const [nuevaPass, setNuevaPass] = useState("");
   const [confirmPass, setConfirmPass] = useState("");
   const [notificacion, setNotificacion] = useState("");
-  const [tipoNotificacion, setTipoNotificacion] = useState(""); // success o error
-  const [mostrarPass, setMostrarPass] = useState(false);
+  const [tipoNotificacion, setTipoNotificacion] = useState("");
+  const [mostrarNueva, setMostrarNueva] = useState(false);
+  const [mostrarConfirmar, setMostrarConfirmar] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // 🔔 Notificaciones desaparecen automáticamente
   useEffect(() => {
     if (notificacion) {
       const timer = setTimeout(() => {
@@ -29,97 +28,91 @@ function OlvidePassword() {
     }
   }, [notificacion]);
 
-  // Validación de contraseña
   const validarContrasena = (pass) => {
     const regex =
       /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+=[\]{};':"\\|,.<>/?-]).{8,}$/;
     return regex.test(pass);
   };
 
-  // === Paso 1: Enviar correo ===
-  const handleContinuar = async (e) => {
+  // Paso 1: Solicitar correo
+  const handleEnviarCorreo = async (e) => {
     e.preventDefault();
     if (!correo.trim()) {
       setTipoNotificacion("error");
-      setNotificacion("Ingresa tu correo electrónico");
+      setNotificacion("Ingresa tu correo electrónico.");
       return;
     }
 
     try {
       setLoading(true);
-      const response = await fetch("http://localhost:5000/api/Auth/forgot-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ correo: correo.trim() }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        setTipoNotificacion("error");
-        setNotificacion(data.message || "Error al enviar el correo.");
-        return;
-      }
-
+      await ApiPassword.solicitarRecuperacion(correo);
       setTipoNotificacion("success");
-      setNotificacion("Correo de recuperación enviado correctamente. Revisa tu bandeja.");
+      setNotificacion("Correo de verificación enviado correctamente.");
       setStep(2);
     } catch (error) {
-      console.error(error);
       setTipoNotificacion("error");
-      setNotificacion("Error al conectar con el servidor.");
+      setNotificacion(error.message || "Error al enviar el correo.");
     } finally {
       setLoading(false);
     }
   };
 
-  // === Paso 2: Restablecer contraseña ===
-  const handleActualizar = async (e) => {
+  // Paso 2: Verificar código
+  const handleVerificarCodigo = async (e) => {
+    e.preventDefault();
+    if (!codigo.trim()) {
+      setTipoNotificacion("error");
+      setNotificacion("Ingresa el código enviado a tu correo.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await ApiPassword.verificarCodigo(correo, codigo);
+      setTipoNotificacion("success");
+      setNotificacion("Código verificado correctamente.");
+      setStep(3);
+    } catch (error) {
+      setTipoNotificacion("error");
+      setNotificacion(error.message || "Código inválido o expirado.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Paso 3: Cambiar contraseña
+  const handleActualizarPassword = async (e) => {
     e.preventDefault();
 
-    if (!token.trim() || !nuevaPass.trim() || !confirmPass.trim()) {
+    if (!nuevaPass.trim() || !confirmPass.trim()) {
       setTipoNotificacion("error");
-      setNotificacion("Completa todos los campos");
+      setNotificacion("Completa todos los campos.");
       return;
     }
 
     if (nuevaPass !== confirmPass) {
       setTipoNotificacion("error");
-      setNotificacion("Las contraseñas no coinciden");
+      setNotificacion("Las contraseñas no coinciden.");
       return;
     }
 
     if (!validarContrasena(nuevaPass)) {
       setTipoNotificacion("error");
       setNotificacion(
-        "La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula, un número y un carácter especial."
+        "Debe tener 8 caracteres, mayúscula, minúscula, número y símbolo."
       );
       return;
     }
 
     try {
       setLoading(true);
-      const response = await fetch("http://localhost:5000/api/Auth/reset-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: token.trim(), nuevaContrasena: nuevaPass }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        setTipoNotificacion("error");
-        setNotificacion(data.message || "Error al restablecer la contraseña.");
-        return;
-      }
-
+      await ApiPassword.restablecerPassword(correo, nuevaPass, confirmPass);
       setTipoNotificacion("success");
-      setNotificacion("¡Contraseña cambiada correctamente!");
-      setTimeout(() => navigate("/"), 1500);
+      setNotificacion("¡Contraseña actualizada correctamente!");
+      setTimeout(() => navigate("/"), 2000);
     } catch (error) {
-      console.error(error);
       setTipoNotificacion("error");
-      setNotificacion("Error al conectar con el servidor.");
+      setNotificacion(error.message || "Error al restablecer la contraseña.");
     } finally {
       setLoading(false);
     }
@@ -136,97 +129,95 @@ function OlvidePassword() {
       <div className="olvide-card">
         <img src={logo} alt="Logo" className="olvide-logo" />
 
-        {/* Indicador de pasos */}
         <div className="steps-indicator">
-          <span className={step === 1 ? "active-step" : ""}>1</span>
-          <span className={step === 2 ? "active-step" : ""}>2</span>
+          <span className={step >= 1 ? "active-step" : ""}>1</span>
+          <span className={step >= 2 ? "active-step" : ""}>2</span>
+          <span className={step >= 3 ? "active-step" : ""}>3</span>
         </div>
 
         {/* Paso 1 */}
         {step === 1 && (
-          <form className="olvide-form" onSubmit={handleContinuar}>
-            <h2 className="titulo-card">Recuperar contraseña</h2>
-            <p className="subtitulo-card">Ingresa tu correo electrónico</p>
+          <form onSubmit={handleEnviarCorreo}>
+            <h2>Recuperar contraseña</h2>
             <input
               type="email"
               placeholder="Correo electrónico"
               value={correo}
               onChange={(e) => setCorreo(e.target.value)}
-              required
             />
-            <button type="submit" className="btn-olvide" disabled={loading}>
-              {loading ? "Enviando..." : "Continuar"}
-            </button>
-            <button
-              type="button"
-              className="btn-volver"
-              onClick={() => navigate("/")}
-              disabled={loading}
-            >
-              Regresar al inicio
+            <button type="submit" disabled={loading}>
+              {loading ? "Enviando..." : "Enviar código"}
             </button>
           </form>
         )}
 
         {/* Paso 2 */}
         {step === 2 && (
-          <form className="olvide-form" onSubmit={handleActualizar}>
-            <h2 className="titulo-card">Nueva contraseña</h2>
-            <p className="subtitulo-card">Ingresa el token y tu nueva contraseña</p>
-
+          <form onSubmit={handleVerificarCodigo}>
+            <h2>Verificar código</h2>
             <input
               type="text"
               placeholder="Código de verificación"
-              value={token}
-              onChange={(e) => setToken(e.target.value)}
-              required
+              value={codigo}
+              onChange={(e) => setCodigo(e.target.value)}
             />
-
-            <div className="input-password">
-              <input
-                type={mostrarPass ? "text" : "password"}
-                placeholder="Nueva contraseña"
-                value={nuevaPass}
-                onChange={(e) => setNuevaPass(e.target.value)}
-                required
-              />
-              <img
-                src={mostrarPass ? eyeOffIcon : eyeIcon}
-                alt="Mostrar contraseña"
-                className="icon-eye"
-                onClick={() => setMostrarPass(!mostrarPass)}
-              />
-            </div>
-
-            <div className="input-password">
-              <input
-                type={mostrarPass ? "text" : "password"}
-                placeholder="Confirmar contraseña"
-                value={confirmPass}
-                onChange={(e) => setConfirmPass(e.target.value)}
-                required
-              />
-              <img
-                src={mostrarPass ? eyeOffIcon : eyeIcon}
-                alt="Mostrar contraseña"
-                className="icon-eye"
-                onClick={() => setMostrarPass(!mostrarPass)}
-              />
-            </div>
-
-            <button type="submit" className="btn-olvide" disabled={loading}>
-              {loading ? "Actualizando..." : "Actualizar"}
-            </button>
-            <button
-              type="button"
-              className="btn-volver"
-              onClick={() => navigate("/")}
-              disabled={loading}
-            >
-              Regresar al inicio
+            <button type="submit" disabled={loading}>
+              {loading ? "Verificando..." : "Verificar"}
             </button>
           </form>
         )}
+
+        {/* Paso 3 */}
+        {step === 3 && (
+          <form onSubmit={handleActualizarPassword}>
+            <h2>Nueva contraseña</h2>
+
+            {/* Campo nueva contraseña */}
+            <div className="input-password">
+              <input
+                type={mostrarNueva ? "text" : "password"}
+                placeholder="Nueva contraseña"
+                value={nuevaPass}
+                onChange={(e) => setNuevaPass(e.target.value)}
+              />
+              <span
+                className="toggle-eye"
+                onClick={() => setMostrarNueva(!mostrarNueva)}
+              >
+                {mostrarNueva ? <FaEyeSlash /> : <FaEye />}
+              </span>
+            </div>
+
+            {/* Campo confirmar contraseña */}
+            <div className="input-password">
+              <input
+                type={mostrarConfirmar ? "text" : "password"}
+                placeholder="Confirmar contraseña"
+                value={confirmPass}
+                onChange={(e) => setConfirmPass(e.target.value)}
+              />
+              <span
+                className="toggle-eye"
+                onClick={() => setMostrarConfirmar(!mostrarConfirmar)}
+              >
+                {mostrarConfirmar ? <FaEyeSlash /> : <FaEye />}
+              </span>
+            </div>
+
+            <button type="submit" disabled={loading}>
+              {loading ? "Actualizando..." : "Actualizar"}
+            </button>
+          </form>
+        )}
+
+        <button
+          type="button"
+          className="btn-volver"
+          onClick={() => navigate("/")}
+          disabled={loading}
+        >
+          Regresar al inicio
+        </button>
       </div>
     </div>
   );
