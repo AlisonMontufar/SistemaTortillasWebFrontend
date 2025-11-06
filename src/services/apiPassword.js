@@ -1,4 +1,4 @@
-const BASE_URL = "http://localhost:5149/api";
+const BASE_URL = "https://sistematortilla.onrender.com/api";
 
 const ApiPassword = {
   // Paso 1: Enviar correo (usa Notification/send)

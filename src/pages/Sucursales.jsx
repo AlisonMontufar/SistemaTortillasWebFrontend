@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import ApiSucursales from "../services/apiSucursales";
@@ -18,7 +18,7 @@ L.Icon.Default.mergeOptions({
 });
 
 function Sucursales() {
-    const [empresas, setEmpresas] = useState([]);
+    const [empresa, setEmpresa] = useState(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [showModal, setShowModal] = useState(false);
     const [showMapModal, setShowMapModal] = useState(false);
@@ -35,13 +35,56 @@ function Sucursales() {
     const allMapRef = useRef(null);
     const allMapInstanceRef = useRef(null);
 
-    // Form data sin fechaUltimaModificacion
+    // Obtener fkEmpresa del localStorage
+    const getFkEmpresaFromStorage = useCallback(() => {
+        try {
+            console.log("🔍 Buscando fkEmpresa en localStorage...");
+
+            // Opción 1: Buscar directamente la clave 'fkEmpresa'
+            const fkEmpresaDirecto = localStorage.getItem("fkEmpresa");
+            if (fkEmpresaDirecto) {
+                console.log("✅ fkEmpresa encontrado directamente:", fkEmpresaDirecto);
+                return parseInt(fkEmpresaDirecto);
+            }
+
+            // Opción 2: Buscar en userData (si existe como string JSON)
+            const userDataString = localStorage.getItem("userData");
+            if (userDataString) {
+                console.log("📦 userData encontrado:", userDataString);
+                try {
+                    const userData = JSON.parse(userDataString);
+                    if (userData && userData.fkEmpresa !== undefined && userData.fkEmpresa !== null) {
+                        console.log("✅ fkEmpresa encontrado en userData:", userData.fkEmpresa);
+                        return userData.fkEmpresa;
+                    }
+                } catch (parseError) {
+                    console.warn("⚠️ Error parseando userData:", parseError);
+                }
+            }
+
+            // Opción 3: Buscar en otras posibles ubicaciones
+            const fkEmpresaAlt = localStorage.getItem("fkEmpresa");
+            if (fkEmpresaAlt) {
+                console.log("✅ fkEmpresa encontrado en ubicación alternativa:", fkEmpresaAlt);
+                return parseInt(fkEmpresaAlt);
+            }
+
+            console.warn("⚠️ No se encontró fkEmpresa en localStorage");
+            console.log("🔍 Claves disponibles en localStorage:", Object.keys(localStorage));
+            return null;
+        } catch (error) {
+            console.error("❌ Error obteniendo fkEmpresa:", error);
+            return null;
+        }
+    }, []);
+
+    // Form data
     const [formData, setFormData] = useState({
         nombreSucursal: "",
         telefono: "",
         correoElectronico: "",
         nombreEncargado: "",
-        fkEmpresa: 1,
+        fkEmpresa: "",
         calle: "",
         numero: "",
         colonia: "",
@@ -51,13 +94,70 @@ function Sucursales() {
         referencias: ""
     });
 
+    // ---------- Funciones API ----------
+    const fetchSucursales = useCallback(async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const fkEmpresa = getFkEmpresaFromStorage();
+            if (!fkEmpresa) {
+                setError("No se pudo obtener la empresa del usuario");
+                return;
+            }
+
+            console.log("🚀 Llamando API de sucursales por empresa con fkEmpresa:", fkEmpresa);
+            const data = await ApiSucursales.obtenerSucursalesPorEmpresa(fkEmpresa);
+            console.log("📊 Sucursales recibidas:", data);
+
+            // FILTRAR: Solo mostrar sucursales con estatus = 1
+            const sucursalesActivas = Array.isArray(data)
+                ? data.filter(sucursal => sucursal.estatus === 1)
+                : [];
+
+            console.log("✅ Sucursales activas (estatus=1):", sucursalesActivas.length);
+            setSucursalesData(sucursalesActivas);
+        } catch (err) {
+            console.error("❌ Error en fetchSucursales:", err);
+            setError(err.message || "Error al obtener sucursales");
+        } finally {
+            setLoading(false);
+        }
+    }, [getFkEmpresaFromStorage]);
+
+    // Obtener solo la empresa específica
+    const fetchEmpresa = useCallback(async () => {
+        try {
+            const fkEmpresa = getFkEmpresaFromStorage();
+            if (!fkEmpresa) {
+                console.warn("⚠️ No hay fkEmpresa para obtener la empresa");
+                return;
+            }
+
+            console.log("🏢 Obteniendo empresa con ID:", fkEmpresa);
+            const data = await ApiSucursales.obtenerEmpresaPorId(fkEmpresa);
+            console.log("📋 Empresa recibida:", data);
+
+            setEmpresa(data);
+
+            // Actualizar formData con la empresa correcta
+            setFormData(prev => ({
+                ...prev,
+                fkEmpresa: data.id
+            }));
+        } catch (err) {
+            console.error("Error fetching empresa:", err);
+        }
+    }, [getFkEmpresaFromStorage]);
+
     // Cargar datos iniciales
     useEffect(() => {
+        console.log("🎯 Iniciando carga de datos...");
         fetchSucursales();
-        fetchEmpresas();
-    }, []);
+        fetchEmpresa();
+    }, [fetchSucursales, fetchEmpresa]);
 
-    // Inicializar mapa del modal (mapRef) - CORREGIDO
+    // [Los demás useEffect del mapa permanecen igual...]
+    // Inicializar mapa del modal (mapRef)
     useEffect(() => {
         if (!showModal || !mapRef.current) return;
 
@@ -69,7 +169,6 @@ function Sucursales() {
             markerRef.current = null;
         }
 
-        // Crear mapa con coordenadas iniciales
         const latInicial = coordinates.lat || 19.4326;
         const lngInicial = coordinates.lng || -99.1332;
         const map = L.map(mapRef.current).setView([latInicial, lngInicial], 14);
@@ -79,21 +178,15 @@ function Sucursales() {
             attribution: "&copy; OpenStreetMap contributors",
         }).addTo(map);
 
-        // Crear marcador draggable
         const marker = L.marker([latInicial, lngInicial], { draggable: true }).addTo(map);
         markerRef.current = marker;
 
-        // Evento: cuando sueltas el marcador - CORREGIDO
         marker.on("dragend", async function () {
             const { lat, lng } = marker.getLatLng();
             setCoordinates({ lat, lng });
 
             try {
                 const direccionGenerada = await GeocodingService.reverseGeocode(lat, lng);
-
-                console.log("📦 Dirección detectada:", direccionGenerada);
-
-                // ✅ Actualizar formData directamente - esto hará re-render de los inputs
                 setFormData(prev => ({
                     ...prev,
                     calle: direccionGenerada.calle || prev.calle,
@@ -104,13 +197,11 @@ function Sucursales() {
                     cp: direccionGenerada.cp || prev.cp,
                     referencias: direccionGenerada.referencias || prev.referencias,
                 }));
-
             } catch (error) {
                 console.warn("⚠️ Error al obtener dirección inversa:", error);
             }
         });
 
-        // Cleanup function
         return () => {
             if (mapInstanceRef.current) {
                 try {
@@ -120,9 +211,9 @@ function Sucursales() {
                 markerRef.current = null;
             }
         };
-    }, [showModal,coordinates]);
+    }, [showModal, coordinates]);
 
-    // Mantener marcador y vista sincronizados si cambian coordinates
+    // Mantener marcador y vista sincronizados
     useEffect(() => {
         if (mapInstanceRef.current && markerRef.current) {
             markerRef.current.setLatLng([coordinates.lat, coordinates.lng]);
@@ -130,7 +221,7 @@ function Sucursales() {
         }
     }, [coordinates.lat, coordinates.lng]);
 
-    // Geocodificar dirección cuando cambian los campos relevantes del formulario
+    // Geocodificar dirección
     useEffect(() => {
         let timeout = null;
 
@@ -150,40 +241,17 @@ function Sucursales() {
         return () => clearTimeout(timeout);
     }, [formData.calle, formData.numero, formData.colonia, formData.ciudad, formData.estado]);
 
-    // ---------- Funciones API ----------
-    const fetchSucursales = async () => {
-        setLoading(true);
-        setError(null);
-        try {
-            const data = await ApiSucursales.obtenerSucursales();
-            setSucursalesData(Array.isArray(data) ? data : []);
-        } catch (err) {
-            setError(err.message || "Error al obtener sucursales");
-            console.error("Error fetching sucursales:", err);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const fetchEmpresas = async () => {
-        try {
-            const data = await ApiSucursales.obtenerEmpresas();
-            setEmpresas(Array.isArray(data) ? data : []);
-        } catch (err) {
-            console.error("Error fetching empresas:", err);
-        }
-    };
-
     const handleCreateSucursal = async (data) => {
         setLoading(true);
         setError(null);
         try {
+            const fkEmpresa = getFkEmpresaFromStorage();
             const sucursalData = {
                 nombreSucursal: data.nombreSucursal,
                 telefono: data.telefono,
                 correoElectronico: data.correoElectronico,
                 nombreEncargado: data.nombreEncargado,
-                fkEmpresa: Number(data.fkEmpresa) || 1,
+                fkEmpresa: Number(data.fkEmpresa) || fkEmpresa,
                 direccion: {
                     calle: data.calle,
                     numero: data.numero,
@@ -213,6 +281,7 @@ function Sucursales() {
         setError(null);
         try {
             const sucursalId = selectedSucursal?.sucursalId ?? selectedSucursal?.id;
+            const fkEmpresa = getFkEmpresaFromStorage();
 
             const sucursalData = {
                 sucursalId: sucursalId,
@@ -220,8 +289,8 @@ function Sucursales() {
                 telefono: data.telefono,
                 correoElectronico: data.correoElectronico,
                 nombreEncargado: data.nombreEncargado,
-                fkEmpresa: Number(data.fkEmpresa) || 1,
-                estatus: selectedSucursal?.estatus ?? 1,
+                fkEmpresa: Number(data.fkEmpresa) || fkEmpresa,
+                estatus: 1, // ✅ Siempre mantener estatus = 1 al actualizar
                 direccion: {
                     calle: data.calle,
                     numero: data.numero,
@@ -283,12 +352,13 @@ function Sucursales() {
     };
 
     const resetForm = () => {
+        const fkEmpresa = getFkEmpresaFromStorage();
         setFormData({
             nombreSucursal: "",
             telefono: "",
             correoElectronico: "",
             nombreEncargado: "",
-            fkEmpresa: 1,
+            fkEmpresa: fkEmpresa || "",
             calle: "",
             numero: "",
             colonia: "",
@@ -319,7 +389,7 @@ function Sucursales() {
             telefono: sucursal.telefono || "",
             correoElectronico: sucursal.correoElectronico || "",
             nombreEncargado: sucursal.nombreEncargado || "",
-            fkEmpresa: sucursal.fkEmpresa || sucursal.fkEmpresaId || 1,
+            fkEmpresa: sucursal.fkEmpresa || sucursal.fkEmpresaId || getFkEmpresaFromStorage(),
             calle: direccion.calle || "",
             numero: direccion.numero || "",
             colonia: direccion.colonia || "",
@@ -387,10 +457,7 @@ function Sucursales() {
         setShowMapModal(true);
 
         setTimeout(async () => {
-            if (!allMapRef.current) {
-                console.error('❌ Map ref no disponible');
-                return;
-            }
+            if (!allMapRef.current) return;
 
             if (allMapInstanceRef.current) {
                 try {
@@ -410,6 +477,7 @@ function Sucursales() {
                 const markers = [];
                 const geocodingPromises = [];
 
+                // ✅ FILTRAR: Solo mostrar sucursales activas en el mapa también
                 const sucursalesValidas = sucursalesData.filter(sucursal => {
                     const dir = sucursal.direccion || {
                         calle: sucursal.calle, numero: sucursal.numero, ciudad: sucursal.ciudad, estado: sucursal.estado
@@ -417,10 +485,6 @@ function Sucursales() {
                     if (!dir) return false;
                     const values = [dir.calle, dir.ciudad, dir.estado, sucursal.nombreSucursal];
                     if (values.some(v => !v || v === "" || v === "string")) return false;
-
-                    const direccionCompleta = `${dir.calle || ''} ${dir.numero || ''}, ${dir.colonia || ''}, ${dir.ciudad || ''}, ${dir.estado || ''}`.toLowerCase();
-                    if (direccionCompleta.includes('prueba') || direccionCompleta.includes('temporal') || direccionCompleta.includes('conocida')) return false;
-
                     return true;
                 });
 
@@ -447,8 +511,6 @@ function Sucursales() {
                 `);
 
                                 markers.push(marker);
-                            } else {
-                                console.warn(`❌ No coords para ${sucursal.nombreSucursal}`);
                             }
                         })
                         .catch(err => console.warn('⚠️ Error geocoding sucursal:', err));
@@ -461,11 +523,7 @@ function Sucursales() {
                 if (markers.length > 0) {
                     const group = L.featureGroup(markers);
                     map.fitBounds(group.getBounds().pad(0.1));
-                    L.popup().setLatLng(map.getCenter()).setContent(`<div style="text-align:center;"><strong>${markers.length} sucursales mostradas</strong></div>`).openOn(map);
-                } else {
-                    L.popup().setLatLng([20.0539, -99.3095]).setContent('<div style="text-align:center;"><strong>No se encontraron sucursales válidas</strong><br/>Agrega sucursales con direcciones completas.</div>').openOn(map);
                 }
-
             } catch (error) {
                 console.error('💥 Error inicializando mapa general:', error);
             }
@@ -535,6 +593,7 @@ function Sucursales() {
         }
     };
 
+    // ✅ FILTRAR: Solo buscar entre sucursales activas
     const filteredSucursales = sucursalesData.filter(sucursal =>
         searchTerm === "" ||
         (sucursal.nombreSucursal && sucursal.nombreSucursal.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -577,7 +636,9 @@ function Sucursales() {
                 <main className="main-content">
                     <div className="page-header">
                         <h2 className="page-title"><span className="title-icon">🏪</span> Gestión de Sucursales</h2>
-                        <p className="page-subtitle">Administra todas las sucursales de tu empresa</p>
+                        <p className="page-subtitle">
+                            {empresa ? `Administra las sucursales activas de ${empresa.nombreEmpresa}` : "Administra las sucursales activas de tu empresa"}
+                        </p>
                     </div>
 
                     {error && <div className="error-banner"><strong>Error:</strong> {error}</div>}
@@ -595,7 +656,7 @@ function Sucursales() {
 
                     <div className="table-container">
                         {loading ? (
-                            <div className="loading-state"><div className="spinner"></div><p>Cargando sucursales...</p></div>
+                            <div className="loading-state"><div className="spinner"></div><p>Cargando sucursales activas...</p></div>
                         ) : (
                             <table className="table">
                                 <thead>
@@ -610,11 +671,11 @@ function Sucursales() {
                                 </thead>
                                 <tbody>
                                     {filteredSucursales.length === 0 ? (
-                                        <tr><td colSpan="6" className="empty-state"><div className="empty-icon">📭</div><p>No hay sucursales disponibles</p><small>Comienza agregando una nueva sucursal</small></td></tr>
+                                        <tr><td colSpan="6" className="empty-state"><div className="empty-icon">📭</div><p>No hay sucursales activas disponibles</p><small>Comienza agregando una nueva sucursal</small></td></tr>
                                     ) : (
                                         filteredSucursales.map((sucursal, index) => (
-                                            <tr key={index} className="table-row">
-                                                <td><span className="table-badge">{sucursal.sucursalId || sucursal.id}</span></td>
+                                            <tr key={sucursal.sucursalId || index} className="table-row">
+                                                <td><span className="table-badge">{sucursal.sucursalId}</span></td>
                                                 <td><strong>{sucursal.nombreSucursal}</strong></td>
                                                 <td>{sucursal.nombreEncargado}</td>
                                                 <td>{sucursal.correoElectronico}</td>
@@ -622,7 +683,7 @@ function Sucursales() {
                                                 <td>
                                                     <div className="action-buttons">
                                                         <button className="icon-button edit-button" onClick={() => handleEditSucursal(sucursal)} title="Editar"><img src={icons.edit} alt="Editar" className="action-icon" /></button>
-                                                        <button className="icon-button delete-button" onClick={() => handleDeleteSucursalConfirm(sucursal.sucursalId || sucursal.id)} title="Eliminar"><img src={icons.delete} alt="Eliminar" className="action-icon" /></button>
+                                                        <button className="icon-button delete-button" onClick={() => handleDeleteSucursalConfirm(sucursal.sucursalId)} title="Eliminar"><img src={icons.delete} alt="Eliminar" className="action-icon" /></button>
                                                     </div>
                                                 </td>
                                             </tr>
@@ -641,7 +702,7 @@ function Sucursales() {
                     <div className="modal-content modal-map-large" onClick={(e) => e.stopPropagation()}>
                         <div className="modal-header">
                             <div className="modal-header-icon"></div>
-                            <h3>Mapa de Sucursales</h3>
+                            <h3>Mapa de Sucursales Activas {empresa && `- ${empresa.nombreEmpresa}`}</h3>
                             <button className="modal-close" onClick={handleCloseMapModal} type="button"><img src={icons.close} alt="Cerrar" /></button>
                         </div>
                         <div ref={allMapRef} style={{ width: '100%', height: '70vh', borderRadius: '8px' }}></div>
@@ -684,10 +745,16 @@ function Sucursales() {
                                     </div>
                                     <div className="form-group">
                                         <label>Empresa *</label>
-                                        <select name="fkEmpresa" value={formData.fkEmpresa} onChange={handleInputChange} required>
-                                            <option value="">Selecciona una empresa</option>
-                                            {empresas.map(empresa => <option key={empresa.id} value={empresa.id}>{empresa.nombreEmpresa}</option>)}
+                                        <select name="fkEmpresa" value={formData.fkEmpresa} onChange={handleInputChange} required disabled={modalMode === "crear"}>
+                                            {empresa ? (
+                                                <option value={empresa.id}>{empresa.nombreEmpresa}</option>
+                                            ) : (
+                                                <option value="">Cargando empresa...</option>
+                                            )}
                                         </select>
+                                        <small style={{ color: '#666', fontStyle: 'italic' }}>
+                                            {modalMode === "crear" ? "La sucursal se asignará automáticamente a tu empresa" : "Empresa asignada a esta sucursal"}
+                                        </small>
                                     </div>
                                 </div>
                             </div>

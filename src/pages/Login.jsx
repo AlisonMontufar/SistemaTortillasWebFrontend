@@ -92,11 +92,15 @@ function Login() {
       setLoading(true);
       const data = await ApiAuth.login(usuario, contrasena);
 
-      // Guardar token y nombreUsuario en localStorage
+      // Guardar TODOS los datos en localStorage
       localStorage.setItem("token", data.token);
-      localStorage.setItem("nombreUsuario", usuario.trim());
-      // Nota: Si necesitas el ID del usuario, debería venir en la respuesta del servidor
-      // localStorage.setItem("usuarioId", data.usuarioId); 
+      localStorage.setItem("expiresAt", data.expiresAt);
+      localStorage.setItem("username", data.username);
+      localStorage.setItem("roleId", data.roleId.toString()); // Convertir a string
+      localStorage.setItem("fkEmpresa", data.fkEmpresa.toString()); // Convertir a string
+
+      // También puedes guardar el objeto completo como JSON por si necesitas acceder a todos los datos juntos
+      localStorage.setItem("userData", JSON.stringify(data));
 
       showToast("Inicio de sesión exitoso", "success");
       setTimeout(() => navigate("/inicio"), 1000);
