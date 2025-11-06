@@ -1,0 +1,571 @@
+/* ===== CONTENEDOR PRINCIPAL ===== */
+.login-container {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ===== IZQUIERDA ===== */
+.left-section {
+  position: relative;
+  width: 50%;
+  background-color: #f5a700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.content-left {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+}
+
+.logo {
+  width: 200px;
+  height: auto;
+  margin-bottom: 25px;
+}
+
+.bienvenido-text {
+  font-size: 2.5rem;
+  color: white;
+  font-weight: 700;
+  text-shadow: 0 3px 5px rgba(0, 0, 0, 0.2);
+  margin-top: -30px;
+}
+
+/* ===== ONDAS ===== */
+.top-wave,
+.bottom-wave {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  overflow: hidden;
+  line-height: 0;
+  z-index: 0;
+}
+
+.top-wave {
+  top: 0;
+  transform: scaleX(-1);
+}
+
+.bottom-wave {
+  bottom: 0;
+}
+
+.top-wave svg,
+.bottom-wave svg {
+  display: block;
+  width: 100%;
+  height: 150px;
+}
+
+/* ===== SEGUNDA ONDA ===== */
+.second-wave {
+  position: absolute;
+  bottom: 0px;
+  left: 0;
+  width: 100%;
+  z-index: 1;
+  transform: none;
+  pointer-events: none;
+}
+
+.second-wave svg {
+  display: block;
+  width: 100%;
+  height: 180px;
+}
+
+/* ===== DERECHA ===== */
+.right-section {
+  width: 50%;
+  background-color: #efefef;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 40px;
+  text-align: center;
+  position: relative;
+}
+
+.titulo-derecha {
+  font-weight: 700;
+  font-size: 2rem;
+  color: #000;
+  margin-bottom: 60px;
+  position: relative;
+  top: -30px;
+  left: -70px;
+  text-shadow: none;
+}
+
+.titulo-derecha::after {
+  display: none;
+}
+
+/* ===== FORMULARIO ===== */
+.form-right {
+  width: 100%;
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.input-group {
+  width: 100%;
+  margin-bottom: 25px;
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  position: relative;
+}
+
+.label-input {
+  font-weight: 600;
+  color: #015176;
+  margin-bottom: 5px;
+}
+
+.form-control.input-azul {
+  width: 100%;
+  padding: 12px 45px 12px 12px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  color: black;
+  font-weight: 900;
+  background-color: white;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  box-shadow: none;
+}
+
+.form-control.input-azul:focus {
+  border-color: #f5a700;
+  outline: none;
+  box-shadow: none;
+}
+
+/* ===== VALIDACIONES EN TIEMPO REAL ===== */
+.form-control.input-azul.input-success {
+  border-color: #2ecc71;
+  box-shadow: none;
+}
+
+.form-control.input-azul.input-error {
+  border-color: #e63946;
+  box-shadow: none;
+}
+
+.error-text {
+  color: #e63946;
+  font-size: 0.85rem;
+  margin-top: 5px;
+  font-weight: 500;
+  display: block;
+  text-align: left;
+}
+
+.success-text {
+  color: #2ecc71;
+  font-size: 0.85rem;
+  margin-top: 5px;
+  font-weight: 500;
+  display: block;
+  text-align: left;
+}
+
+/* ===== VER CONTRASEÑA ===== */
+.password-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.toggle-password {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #666;
+  font-size: 1.3rem;
+  padding: 5px;
+  transition: color 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.toggle-password:hover {
+  color: #f5a700;
+}
+
+.toggle-password:focus {
+  outline: none;
+}
+
+/* ===== BOTÓN INICIAR ===== */
+.btn-iniciar {
+  width: 100%;
+  padding: 12px;
+  border-radius: 8px;
+  background-color: #f5a700;
+  border: none;
+  color: white;
+  font-weight: 700;
+  font-size: 1rem;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+  margin-top: 10px;
+  box-shadow: none;
+}
+
+.btn-iniciar:hover {
+  background-color: #d89000;
+  transform: translateY(-1px);
+}
+
+.btn-iniciar:disabled {
+  background-color: #a9a9a9;
+  cursor: not-allowed;
+  opacity: 0.8;
+  transform: none;
+}
+
+/* ===== OLVIDÉ CONTRASEÑA ===== */
+.recuperar-pass {
+  margin-top: 15px;
+}
+
+.btn-recuperar {
+  background: none;
+  border: none;
+  color: #ec9d02;
+  cursor: pointer;
+  font-size: 0.9rem;
+  text-shadow: none;
+  box-shadow: none;
+}
+
+.btn-recuperar:hover {
+  color: #333;
+  text-shadow: none;
+}
+
+.btn-recuperar:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+/* ===== TOAST NOTIFICATIONS ===== */
+.toast {
+  position: fixed;
+  top: 30px;
+  right: 30px;
+  padding: 15px 25px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: white;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
+  opacity: 0;
+  transform: translateY(-10px);
+  animation: fadeInOut 3.5s ease forwards;
+}
+
+.toast-success {
+  background-color: #2ecc71;
+  border-left: 6px solid #27ae60;
+}
+
+.toast-error {
+  background-color: #e74c3c;
+  border-left: 6px solid #c0392b;
+}
+
+@keyframes fadeInOut {
+  0% {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  10% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  90% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+}
+
+/* ===== RESPONSIVE ===== */
+
+/* Tablets (768px - 992px) */
+@media (max-width: 992px) {
+  .login-container {
+    flex-direction: column;
+  }
+
+  .left-section,
+  .right-section {
+    width: 100%;
+    height: 50%;
+  }
+
+  .right-section {
+    padding: 30px 20px;
+  }
+
+  .titulo-derecha {
+    margin-bottom: 40px;
+  }
+}
+
+/* Tabletas pequeñas y móviles grandes (576px - 768px) */
+@media (max-width: 768px) {
+  .login-container {
+    flex-direction: column;
+    height: auto;
+    min-height: 100vh;
+  }
+
+  .left-section,
+  .right-section {
+    width: 100%;
+    height: auto;
+    min-height: 50vh;
+  }
+
+  .left-section {
+    padding: 40px 20px;
+  }
+
+  .right-section {
+    padding: 40px 20px;
+  }
+
+  .logo {
+    width: 150px;
+    margin-bottom: 20px;
+  }
+
+  .bienvenido-text {
+    font-size: 2rem;
+    margin-top: -20px;
+  }
+
+  .titulo-derecha {
+    font-size: 1.7rem;
+    top: 0;
+    left: 0;
+    margin-bottom: 40px;
+    text-align: center;
+  }
+
+  .form-right {
+    max-width: 100%;
+  }
+
+  .top-wave svg,
+  .bottom-wave svg {
+    height: 100px;
+  }
+
+  .second-wave svg {
+    height: 120px;
+  }
+}
+
+/* Móviles (480px - 576px) */
+@media (max-width: 576px) {
+  .left-section {
+    padding: 30px 15px;
+    min-height: 45vh;
+  }
+
+  .right-section {
+    padding: 30px 15px;
+    min-height: 55vh;
+  }
+
+  .logo {
+    width: 120px;
+    margin-bottom: 15px;
+  }
+
+  .bienvenido-text {
+    font-size: 1.7rem;
+    margin-top: -15px;
+  }
+
+  .titulo-derecha {
+    font-size: 1.5rem;
+    margin-bottom: 30px;
+  }
+
+  .input-group {
+    margin-bottom: 20px;
+  }
+
+  .form-control.input-azul {
+    padding: 10px 40px 10px 10px;
+    font-size: 0.9rem;
+  }
+
+  .btn-iniciar {
+    padding: 10px;
+    font-size: 0.9rem;
+  }
+
+  .toggle-password {
+    font-size: 1.1rem;
+    right: 10px;
+  }
+
+  .toast {
+    top: 20px;
+    right: 20px;
+    left: 20px;
+    padding: 12px 20px;
+    font-size: 0.9rem;
+  }
+
+  .top-wave svg,
+  .bottom-wave svg {
+    height: 80px;
+  }
+
+  .second-wave svg {
+    height: 100px;
+  }
+}
+
+/* Móviles pequeños (hasta 480px) */
+@media (max-width: 480px) {
+  .left-section {
+    padding: 25px 10px;
+    min-height: 40vh;
+  }
+
+  .right-section {
+    padding: 25px 10px;
+    min-height: 60vh;
+  }
+
+  .logo {
+    width: 100px;
+    margin-bottom: 10px;
+  }
+
+  .bienvenido-text {
+    font-size: 1.4rem;
+    margin-top: -10px;
+  }
+
+  .titulo-derecha {
+    font-size: 1.3rem;
+    margin-bottom: 25px;
+  }
+
+  .form-control.input-azul {
+    padding: 8px 35px 8px 8px;
+    font-size: 0.85rem;
+  }
+
+  .btn-iniciar {
+    padding: 8px;
+    font-size: 0.85rem;
+  }
+
+  .toggle-password {
+    font-size: 1rem;
+    right: 8px;
+  }
+
+  .label-input {
+    font-size: 0.9rem;
+  }
+
+  .btn-recuperar {
+    font-size: 0.8rem;
+  }
+
+  .error-text,
+  .success-text {
+    font-size: 0.75rem;
+  }
+}
+
+/* Móviles muy pequeños (hasta 360px) */
+@media (max-width: 360px) {
+  .bienvenido-text {
+    font-size: 1.2rem;
+  }
+
+  .titulo-derecha {
+    font-size: 1.1rem;
+  }
+
+  .logo {
+    width: 80px;
+  }
+
+  .form-control.input-azul {
+    padding: 6px 30px 6px 6px;
+  }
+
+  .btn-iniciar {
+    padding: 6px;
+  }
+}
+
+/* Orientación landscape en móviles */
+@media (max-height: 600px) and (orientation: landscape) {
+  .login-container {
+    flex-direction: row;
+    height: auto;
+    min-height: 100vh;
+  }
+
+  .left-section,
+  .right-section {
+    height: 100vh;
+    width: 50%;
+  }
+
+  .left-section {
+    padding: 20px;
+  }
+
+  .right-section {
+    padding: 20px;
+  }
+
+  .logo {
+    width: 80px;
+    margin-bottom: 10px;
+  }
+
+  .bienvenido-text {
+    font-size: 1.5rem;
+    margin-top: -10px;
+  }
+
+  .titulo-derecha {
+    font-size: 1.3rem;
+    top: 0;
+    left: 0;
+    margin-bottom: 20px;
+  }
+}

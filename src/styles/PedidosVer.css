@@ -1,0 +1,79 @@
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0,0,0,0.45);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  padding: 16px;
+}
+
+.modal-status {
+  background-color: #fff;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 600px;
+  padding: 22px 26px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.25);
+  font-family: 'Poppins', sans-serif;
+  text-align: center;
+}
+
+.modal-status h2 {
+  margin-bottom: 10px;
+}
+
+.modal-status p {
+  margin: 5px 0;
+  font-weight: 500;
+  color: #333;
+}
+
+.status-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 20px 0;
+  position: relative;
+}
+
+.status-line::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 5%;
+  right: 5%;
+  height: 4px;
+  background-color: #ddd;
+  z-index: 1;
+  transform: translateY(-50%);
+}
+
+.status-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 2;
+  position: relative;
+  width: 60px;
+}
+
+.status-step img {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: #ddd;
+  padding: 5px;
+}
+
+.status-step span {
+  margin-top: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #555;
+}
+
+.status-step.active img {
+  background-color: #4CAF50;
+}
