@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import ApiPassword from "../services/apiPassword";
 import "../styles/OlvidePassword.css";
 import logo from "../assets/logo.png";
-import { FaEye, FaEyeSlash } from "react-icons/fa"; // 👁️ Íconos iguales a login
+import { FaEye, FaEyeSlash } from "react-icons/fa"; 
 
 function OlvidePassword() {
   const navigate = useNavigate();

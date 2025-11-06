@@ -16,6 +16,21 @@ class ApiSucursales {
     }
   }
 
+  // GET: Obtener una sucursal por ID
+  static async obtenerSucursalPorId(id) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/Sucursal/${id}`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" }
+      });
+      if (!response.ok) throw new Error(`Error al obtener sucursal: ${response.status}`);
+      return await response.json();
+    } catch (error) {
+      console.error("Error en obtenerSucursalPorId:", error);
+      throw error;
+    }
+  }
+
   // GET: Obtener sucursales por empresa
   static async obtenerSucursalesPorEmpresa(fkEmpresa) {
     try {
@@ -31,7 +46,7 @@ class ApiSucursales {
     }
   }
 
-  // POST: Crear nueva sucursal
+  // POST: Crear nueva sucursal (incluyendo dirección anidada)
   static async crearSucursal(sucursalData) {
     try {
       const response = await fetch(`${API_BASE_URL}/api/Sucursal`, {
@@ -39,7 +54,10 @@ class ApiSucursales {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(sucursalData)
       });
-      if (!response.ok) throw new Error(`Error al crear sucursal: ${response.status}`);
+      if (!response.ok) {
+        const errorData = await response.text();
+        throw new Error(`Error al crear sucursal: ${response.status} - ${errorData}`);
+      }
       return await response.json();
     } catch (error) {
       console.error("Error en crearSucursal:", error);
@@ -47,7 +65,7 @@ class ApiSucursales {
     }
   }
 
-  // PUT: Actualizar sucursal
+  // PUT: Actualizar sucursal (incluyendo dirección anidada)
   static async actualizarSucursal(sucursalData) {
     try {
       const response = await fetch(`${API_BASE_URL}/api/Sucursal`, {
@@ -55,7 +73,10 @@ class ApiSucursales {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(sucursalData)
       });
-      if (!response.ok) throw new Error(`Error al actualizar sucursal: ${response.status}`);
+      if (!response.ok) {
+        const errorData = await response.text();
+        throw new Error(`Error al actualizar sucursal: ${response.status} - ${errorData}`);
+      }
       return await response.json();
     } catch (error) {
       console.error("Error en actualizarSucursal:", error);
@@ -71,7 +92,7 @@ class ApiSucursales {
         headers: { "Content-Type": "application/json" }
       });
       if (!response.ok) throw new Error(`Error al eliminar sucursal: ${response.status}`);
-      return await response.json();
+      return true; // DELETE puede no retornar JSON
     } catch (error) {
       console.error("Error en eliminarSucursal:", error);
       throw error;
@@ -93,49 +114,70 @@ class ApiSucursales {
     }
   }
 
-  // POST: Crear dirección
-  static async crearDireccion(direccionData) {
+  // GET: Obtener una empresa por ID
+  static async obtenerEmpresaPorId(id) {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/Direccion`, {
+      const response = await fetch(`${API_BASE_URL}/api/Empresa/${id}`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" }
+      });
+      if (!response.ok) throw new Error(`Error al obtener empresa: ${response.status}`);
+      return await response.json();
+    } catch (error) {
+      console.error("Error en obtenerEmpresaPorId:", error);
+      throw error;
+    }
+  }
+
+  // POST: Crear nueva empresa
+  static async crearEmpresa(empresaData) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/Empresa`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(direccionData)
+        body: JSON.stringify(empresaData)
       });
-      if (!response.ok) throw new Error(`Error al crear dirección: ${response.status}`);
+      if (!response.ok) {
+        const errorData = await response.text();
+        throw new Error(`Error al crear empresa: ${response.status} - ${errorData}`);
+      }
       return await response.json();
     } catch (error) {
-      console.error("Error en crearDireccion:", error);
+      console.error("Error en crearEmpresa:", error);
       throw error;
     }
   }
 
-  // PUT: Actualizar dirección
-  static async actualizarDireccion(id, direccionData) {
+  // PUT: Actualizar empresa
+  static async actualizarEmpresa(empresaData) {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/Direccion/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/api/Empresa/${empresaData.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(direccionData)
+        body: JSON.stringify(empresaData)
       });
-      if (!response.ok) throw new Error(`Error al actualizar dirección: ${response.status}`);
+      if (!response.ok) {
+        const errorData = await response.text();
+        throw new Error(`Error al actualizar empresa: ${response.status} - ${errorData}`);
+      }
       return await response.json();
     } catch (error) {
-      console.error("Error en actualizarDireccion:", error);
+      console.error("Error en actualizarEmpresa:", error);
       throw error;
     }
   }
 
-  // DELETE: Eliminar dirección
-  static async eliminarDireccion(id) {
+  // DELETE: Eliminar empresa
+  static async eliminarEmpresa(id) {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/Direccion/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/api/Empresa/${id}`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" }
       });
-      if (!response.ok) throw new Error(`Error al eliminar dirección: ${response.status}`);
-      return await response.json();
+      if (!response.ok) throw new Error(`Error al eliminar empresa: ${response.status}`);
+      return true;
     } catch (error) {
-      console.error("Error en eliminarDireccion:", error);
+      console.error("Error en eliminarEmpresa:", error);
       throw error;
     }
   }
