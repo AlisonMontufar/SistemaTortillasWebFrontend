@@ -1,13 +1,15 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Swal from "sweetalert2";
 import ApiPedidos from "../services/apiPedidos";
 import "../styles/Pedidos.css";
-import "../styles/PedidosModal.css";
 import Navbar from "../components/Navbar";
 import Sidebar from "../components/Sidebar";
 
 const icons = {
-    search: "https://cdn-icons-png.flaticon.com/512/54/54481.png"
+    search: "https://cdn-icons-png.flaticon.com/512/54/54481.png",
+    close: "https://cdn-icons-png.flaticon.com/512/61/61155.png",
+    view: "https://cdn-icons-png.flaticon.com/512/709/709612.png",
+    edit: "https://cdn-icons-png.flaticon.com/512/1828/1828270.png",
 };
 
 function Pedidos() {
@@ -15,13 +17,15 @@ function Pedidos() {
     const [pedidosData, setPedidosData] = useState([]);
     const [loading, setLoading] = useState(false);
     const [modalVisible, setModalVisible] = useState(false);
-    const [empresas, setEmpresas] = useState([]);
-
+    const [editModalVisible, setEditModalVisible] = useState(false);
+    const [sucursales, setSucursales] = useState([]);
+    const [empresaActual, setEmpresaActual] = useState(null);
+    const [pedidoSeleccionado, setPedidoSeleccionado] = useState(null);
     const [nuevoPedido, setNuevoPedido] = useState({
         fkEmpresa: 0,
         fkUsuario: 1,
         total: 0,
-        estatusGeneral: "Pendiente",
+        estatusGeneral: "Pagado",
         detalles: [],
         pago: {
             nombreTitular: "",
@@ -33,42 +37,122 @@ function Pedidos() {
             tokenPago: ""
         }
     });
-
+    const [pedidoEdit, setPedidoEdit] = useState({
+        id: 0,
+        estatusGeneral: "",
+        total: 0
+    });
     const [detalleTemp, setDetalleTemp] = useState({
-        productoNombre: "",
+        productoNombre: "Tortilla",
         cantidad: "",
         estatusNombre: "Pendiente",
         sucursalesAsignadas: [],
         estatusDetalle: "Pendiente"
     });
 
-    useEffect(() => {
-        cargarPedidos();
-        cargarEmpresas();
-    }, []);
+    const PRECIO_TORTILLA = 22;
 
-    const cargarPedidos = async () => {
+    // Función para cargar pedidos por empresa
+    const cargarPedidosPorEmpresa = useCallback(async (empresaId) => {
         setLoading(true);
         try {
-            const data = await ApiPedidos.obtenerPedidos();
-            setPedidosData(data);
+            const data = await ApiPedidos.obtenerPedidosPorEmpresa(empresaId);
+            console.log('Datos recibidos:', data);
+            
+            // La API ya devuelve los datos en el formato correcto
+            // Cada objeto ya tiene: idPedido, producto, cantidad, total, sucursal, estatusGeneral, etc.
+            const pedidosTransformados = data.map(pedido => ({
+                id: pedido.idPedido,
+                producto: pedido.producto || "Sin producto",
+                cantidad: pedido.cantidad || 0,
+                total: pedido.total || 0,
+                sucursal: pedido.sucursal || "Sin sucursal",
+                estatusGeneral: pedido.estatusGeneral || "Pagado",
+                estatusDetalle: pedido.estatusDetalle || "Pendiente",
+                fechaRegistro: pedido.fechaHora,
+                empresa: pedido.empresa,
+                nombreEncargado: pedido.nombreEncargado,
+                // Información de dirección
+                calle: pedido.calle,
+                numero: pedido.numero,
+                colonia: pedido.colonia,
+                codigoPostal: pedido.codigoPostal,
+                ciudad: pedido.ciudad,
+                estado: pedido.estado
+            }));
+            
+            setPedidosData(pedidosTransformados);
         } catch (error) {
-            console.error(error);
-            Swal.fire("Error", "No se pudieron cargar los pedidos", "error");
+            console.error('Error completo:', error);
+            Swal.fire("Error", "No se pudieron cargar los pedidos de la empresa", "error");
         }
         setLoading(false);
-    };
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-    const cargarEmpresas = async () => {
+    // Función para cargar sucursales por empresa
+    const cargarSucursalesPorEmpresa = useCallback(async (empresaId) => {
         try {
-            const data = await ApiPedidos.obtenerEmpresas();
-            setEmpresas(data);
+            const data = await ApiPedidos.obtenerSucursalesPorEmpresa(empresaId);
+            console.log('Sucursales recibidas:', data);
+            
+            // Filtrar solo sucursales activas (estatus = 1)
+            const sucursalesActivas = data.filter(sucursal => sucursal.estatus === 1);
+            console.log('Sucursales activas filtradas:', sucursalesActivas);
+            
+            setSucursales(sucursalesActivas);
         } catch (error) {
-            console.error(error);
-            Swal.fire("Error", "No se pudieron cargar las empresas", "error");
+            console.error('Error al cargar sucursales:', error);
+            Swal.fire("Error", "No se pudieron cargar las sucursales", "error");
         }
-    };
+    }, []);
 
+    // Función para cargar nombre de empresa
+    const cargarNombreEmpresa = useCallback(async (empresaId) => {
+        try {
+            const empresas = await ApiPedidos.obtenerEmpresas();
+            const empresaEncontrada = empresas.find(emp => emp.id === empresaId);
+            if (empresaEncontrada) {
+                setEmpresaActual(empresaEncontrada);
+            } else {
+                setEmpresaActual({ id: empresaId, nombreEmpresa: `Empresa ${empresaId}` });
+            }
+        } catch (error) {
+            console.error('Error al cargar nombre de empresa:', error);
+            setEmpresaActual({ id: empresaId, nombreEmpresa: `Empresa ${empresaId}` });
+        }
+    }, []);
+
+    // Effect principal al cargar el componente - EJECUTAR SOLO UNA VEZ
+    useEffect(() => {
+        const fkEmpresa = localStorage.getItem("fkEmpresa");
+        if (fkEmpresa) {
+            const empresaId = Number(fkEmpresa);
+            setNuevoPedido(prev => ({ ...prev, fkEmpresa: empresaId }));
+            
+            // Cargar todos los datos necesarios
+            const cargarDatos = async () => {
+                await cargarSucursalesPorEmpresa(empresaId);
+                await cargarNombreEmpresa(empresaId);
+                await cargarPedidosPorEmpresa(empresaId);
+            };
+            
+            cargarDatos();
+        }
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Calcular total automáticamente cuando cambian los detalles
+    useEffect(() => {
+        const calcularTotal = () => {
+            let total = 0;
+            nuevoPedido.detalles.forEach(detalle => {
+                total += detalle.cantidad * PRECIO_TORTILLA;
+            });
+            setNuevoPedido(prev => ({ ...prev, total: total }));
+        };
+        calcularTotal();
+    }, [nuevoPedido.detalles]);
+
+    // Handlers para inputs de texto
     const handleInputText = (e, field, target = "detalle") => {
         const value = e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, "");
         if (target === "detalle") {
@@ -83,6 +167,7 @@ function Pedidos() {
         }
     };
 
+    // Handlers para inputs numéricos
     const handleInputNumber = (e, field, target = "detalle") => {
         const value = e.target.value.replace(/[^0-9]/g, "");
         if (target === "detalle") {
@@ -92,6 +177,7 @@ function Pedidos() {
         }
     };
 
+    // Handler específico para números de pago
     const handlePagoNumber = (e, field) => {
         let value = e.target.value.replace(/[^0-9]/g, "");
         if (field === "numeroEnmascarado") value = value.slice(0, 16);
@@ -101,6 +187,7 @@ function Pedidos() {
         });
     };
 
+    // Agregar detalle al pedido
     const handleAgregarDetalle = () => {
         if (
             detalleTemp.productoNombre.trim() === "" ||
@@ -110,7 +197,6 @@ function Pedidos() {
             Swal.fire("Error", "Completa todos los campos del detalle correctamente.", "error");
             return;
         }
-
         setNuevoPedido((prev) => ({
             ...prev,
             detalles: [
@@ -121,23 +207,16 @@ function Pedidos() {
                 }
             ]
         }));
-
+        // Limpiar solo cantidad, mantener sucursales seleccionadas
         setDetalleTemp({
-            productoNombre: "",
+            ...detalleTemp,
             cantidad: "",
-            estatusNombre: "Pendiente",
-            sucursalesAsignadas: [],
-            estatusDetalle: "Pendiente"
         });
-
-        Swal.fire("Detalle agregado", "El detalle se agregó correctamente", "success");
+        Swal.fire("Éxito", "Detalle agregado correctamente", "success");
     };
 
+    // Crear nuevo pedido
     const handleAgregarPedido = async () => {
-        if (nuevoPedido.fkEmpresa === 0) {
-            Swal.fire("Error", "Selecciona la empresa del pedido.", "error");
-            return;
-        }
         if (nuevoPedido.detalles.length === 0) {
             Swal.fire("Error", "Agrega al menos un detalle al pedido.", "error");
             return;
@@ -158,7 +237,7 @@ function Pedidos() {
                 fkEmpresa: Number(nuevoPedido.fkEmpresa),
                 fkUsuario: Number(nuevoPedido.fkUsuario),
                 total: Number(nuevoPedido.total),
-                estatusGeneral: nuevoPedido.estatusGeneral,
+                estatusGeneral: "Pagado",
                 detalles: nuevoPedido.detalles.map(d => ({
                     productoNombre: d.productoNombre,
                     cantidad: Number(d.cantidad),
@@ -178,17 +257,16 @@ function Pedidos() {
             };
 
             console.log("Enviando pedido:", payload);
-            await ApiPedidos.crearPedido(payload);
-
-            Swal.fire("Éxito", "Pedido agregado correctamente", "success");
+            const pedidoCreado = await ApiPedidos.crearPedido(payload);
+            Swal.fire("Éxito", `Pedido #${pedidoCreado.id} agregado correctamente`, "success");
             setModalVisible(false);
 
-            // Reset form
+            // Reset form completamente
             setNuevoPedido({
-                fkEmpresa: 0,
+                fkEmpresa: Number(localStorage.getItem("fkEmpresa")),
                 fkUsuario: 1,
                 total: 0,
-                estatusGeneral: "Pendiente",
+                estatusGeneral: "Pagado",
                 detalles: [],
                 pago: {
                     nombreTitular: "",
@@ -201,47 +279,153 @@ function Pedidos() {
                 }
             });
 
-            cargarPedidos();
+            // Limpiar también el detalle temporal
+            setDetalleTemp({
+                productoNombre: "Tortilla",
+                cantidad: "",
+                estatusNombre: "Pendiente",
+                sucursalesAsignadas: [],
+                estatusDetalle: "Pendiente"
+            });
+
+            // Recargar pedidos de la empresa actual
+            const fkEmpresa = localStorage.getItem("fkEmpresa");
+            if (fkEmpresa) {
+                cargarPedidosPorEmpresa(Number(fkEmpresa));
+            }
         } catch (error) {
             console.error("Error completo:", error);
             Swal.fire("Error", error.message || "Error al enviar el pedido", "error");
         }
     };
 
-    const handleVerPedido = (pedido) => {
-        console.log("Detalle del pedido:", pedido);
-        
-        let detallesHTML = "<div style='text-align: left;'>";
-        detallesHTML += `<p><strong>ID Pedido:</strong> ${pedido.id}</p>`;
-        detallesHTML += `<p><strong>Total:</strong> $${pedido.total.toFixed(2)}</p>`;
-        detallesHTML += `<p><strong>Estatus:</strong> ${pedido.estatusGeneral || 'Pendiente'}</p>`;
-        detallesHTML += `<p><strong>Fecha:</strong> ${new Date(pedido.fechaRegistro).toLocaleDateString()}</p>`;
-        
-        if (pedido.detalles && pedido.detalles.length > 0) {
-            detallesHTML += "<h4>Detalles:</h4><ul>";
-            pedido.detalles.forEach(d => {
-                detallesHTML += `<li>${d.productoNombre} - Cantidad: ${d.cantidad} - Estatus: ${d.estatusDetalle}</li>`;
-            });
-            detallesHTML += "</ul>";
-        }
-        
-        if (pedido.pago) {
-            detallesHTML += "<h4>Información de Pago:</h4>";
-            detallesHTML += `<p><strong>Titular:</strong> ${pedido.pago.nombreTitular}</p>`;
-            detallesHTML += `<p><strong>Método:</strong> ${pedido.pago.metodoPago}</p>`;
-            detallesHTML += `<p><strong>Tarjeta:</strong> ${pedido.pago.marcaTarjeta} **** ${pedido.pago.numeroEnmascarado.slice(-4)}</p>`;
-        }
-        
-        detallesHTML += "</div>";
+    // Ver detalles del pedido
+    const handleVerPedido = async (pedido) => {
+        try {
+            // Intentar obtener detalles completos de la API
+            const pedidoCompleto = await ApiPedidos.obtenerPedidoPorId(pedido.id);
+            console.log("Detalle completo del pedido:", pedidoCompleto);
 
-        Swal.fire({
-            title: `Pedido #${pedido.id}`,
-            html: detallesHTML,
-            width: "600px",
-            confirmButtonText: "Cerrar"
-        });
+            let detallesHTML = "<div style='text-align: left;'>";
+            detallesHTML += `<p><strong>ID Pedido:</strong> ${pedidoCompleto.id || pedido.id}</p>`;
+            detallesHTML += `<p><strong>Empresa:</strong> ${pedido.empresa || 'N/A'}</p>`;
+            detallesHTML += `<p><strong>Encargado:</strong> ${pedido.nombreEncargado || 'N/A'}</p>`;
+            detallesHTML += `<p><strong>Total:</strong> ${pedidoCompleto.total?.toFixed(2) || pedido.total?.toFixed(2) || '0.00'}</p>`;
+            detallesHTML += `<p><strong>Estatus General:</strong> ${pedidoCompleto.estatusGeneral || pedido.estatusGeneral || 'Pagado'}</p>`;
+            detallesHTML += `<p><strong>Estatus Detalle:</strong> ${pedido.estatusDetalle || 'Pendiente'}</p>`;
+            detallesHTML += `<p><strong>Fecha:</strong> ${
+                pedido.fechaRegistro && !isNaN(new Date(pedido.fechaRegistro)) 
+                    ? new Date(pedido.fechaRegistro).toLocaleDateString('es-MX', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    })
+                    : 'Fecha no disponible'
+            }</p>`;
+
+            // Información del producto
+            detallesHTML += "<h4>Producto:</h4>";
+            detallesHTML += `<p>${pedido.producto} - ${pedido.cantidad} kg - ${pedido.total?.toFixed(2)}</p>`;
+
+            // Información de la sucursal
+            detallesHTML += "<h4>Sucursal:</h4>";
+            detallesHTML += `<p><strong>${pedido.sucursal}</strong></p>`;
+            if (pedido.calle) {
+                detallesHTML += `<p>${pedido.calle} ${pedido.numero || ''}, ${pedido.colonia || ''}</p>`;
+                detallesHTML += `<p>${pedido.ciudad || ''}, ${pedido.estado || ''} - CP: ${pedido.codigoPostal || ''}</p>`;
+            }
+
+            // Si la API devuelve información de pago
+            if (pedidoCompleto.pago) {
+                detallesHTML += "<h4>Información de Pago:</h4>";
+                detallesHTML += `<p><strong>Titular:</strong> ${pedidoCompleto.pago.nombreTitular}</p>`;
+                detallesHTML += `<p><strong>Método:</strong> ${pedidoCompleto.pago.metodoPago}</p>`;
+                detallesHTML += `<p><strong>Tarjeta:</strong> ${pedidoCompleto.pago.marcaTarjeta} **** ${pedidoCompleto.pago.numeroEnmascarado?.slice(-4) || ''}</p>`;
+            }
+
+            detallesHTML += "</div>";
+
+            Swal.fire({
+                title: `Pedido #${pedido.id}`,
+                html: detallesHTML,
+                width: "600px",
+                confirmButtonText: "Cerrar"
+            });
+        } catch (error) {
+            console.error("Error al cargar detalles del pedido:", error);
+            
+            // Mostrar información básica del pedido si falla la API
+            let detallesHTML = "<div style='text-align: left;'>";
+            detallesHTML += `<p><strong>ID Pedido:</strong> ${pedido.id}</p>`;
+            detallesHTML += `<p><strong>Empresa:</strong> ${pedido.empresa || 'N/A'}</p>`;
+            detallesHTML += `<p><strong>Producto:</strong> ${pedido.producto}</p>`;
+            detallesHTML += `<p><strong>Cantidad:</strong> ${pedido.cantidad} kg</p>`;
+            detallesHTML += `<p><strong>Total:</strong> ${pedido.total?.toFixed(2) || '0.00'}</p>`;
+            detallesHTML += `<p><strong>Sucursal:</strong> ${pedido.sucursal}</p>`;
+            detallesHTML += `<p><strong>Estatus:</strong> ${pedido.estatusGeneral || 'Pagado'}</p>`;
+            detallesHTML += `<p><strong>Fecha:</strong> ${
+                pedido.fechaRegistro && !isNaN(new Date(pedido.fechaRegistro)) 
+                    ? new Date(pedido.fechaRegistro).toLocaleDateString('es-MX')
+                    : 'Fecha no disponible'
+            }</p>`;
+            detallesHTML += "</div>";
+
+            Swal.fire({
+                title: `Pedido #${pedido.id}`,
+                html: detallesHTML,
+                width: "500px",
+                confirmButtonText: "Cerrar"
+            });
+        }
     };
 
+    // Editar pedido
+    const handleEditarPedido = (pedido) => {
+        setPedidoSeleccionado(pedido);
+        setPedidoEdit({
+            id: pedido.id,
+            estatusGeneral: pedido.estatusGeneral || "Pagado",
+            total: pedido.total || 0
+        });
+        setEditModalVisible(true);
+    };
+
+    // Actualizar pedido
+    const handleActualizarPedido = async () => {
+        if (!pedidoEdit.estatusGeneral.trim()) {
+            Swal.fire("Error", "El estatus general es requerido", "error");
+            return;
+        }
+        if (pedidoEdit.total <= 0) {
+            Swal.fire("Error", "El total debe ser mayor a 0", "error");
+            return;
+        }
+
+        try {
+            const payload = {
+                id: pedidoEdit.id,
+                estatusGeneral: pedidoEdit.estatusGeneral,
+                total: Number(pedidoEdit.total)
+            };
+            console.log("Actualizando pedido:", payload);
+            await ApiPedidos.actualizarPedido(pedidoEdit.id, payload);
+            Swal.fire("Éxito", "Pedido actualizado correctamente", "success");
+            setEditModalVisible(false);
+
+            // Recargar pedidos
+            const fkEmpresa = localStorage.getItem("fkEmpresa");
+            if (fkEmpresa) {
+                cargarPedidosPorEmpresa(Number(fkEmpresa));
+            }
+        } catch (error) {
+            console.error("Error al actualizar pedido:", error);
+            Swal.fire("Error", error.message || "Error al actualizar el pedido", "error");
+        }
+    };
+
+    // Eliminar detalle
     const handleEliminarDetalle = (index) => {
         setNuevoPedido({
             ...nuevoPedido,
@@ -249,10 +433,10 @@ function Pedidos() {
         });
     };
 
+    // Manejar cambio de sucursales
     const handleSucursalChange = (sucursalId) => {
         const sucursalesActuales = detalleTemp.sucursalesAsignadas;
         const idNumerico = Number(sucursalId);
-        
         if (sucursalesActuales.includes(idNumerico)) {
             setDetalleTemp({
                 ...detalleTemp,
@@ -269,10 +453,8 @@ function Pedidos() {
     return (
         <div className="pedidos-container">
             <Navbar />
-            
             <div className="content-wrapper">
                 <Sidebar />
-
                 <main className="main-content">
                     <div className="header">
                         <div className="search-container">
@@ -290,10 +472,16 @@ function Pedidos() {
                         </button>
                     </div>
 
-                    <h2 className="title">Lista de pedidos</h2>
+                    <h2 className="title">
+                        {empresaActual
+                            ? `Pedidos de ${empresaActual.nombreEmpresa}`
+                            : 'Lista de pedidos'}
+                    </h2>
+
                     <div className="table-container">
                         {loading ? (
-                            <div style={{ textAlign: 'center', padding: '20px' }}>
+                            <div className="loading-state">
+                                <div className="spinner"></div>
                                 <p>Cargando pedidos...</p>
                             </div>
                         ) : (
@@ -301,38 +489,65 @@ function Pedidos() {
                                 <thead>
                                     <tr className="table-header">
                                         <th>N. Pedido</th>
-                                        <th>Productos</th>
+                                        <th>Producto</th>
+                                        <th>Cantidad</th>
                                         <th>Total</th>
-                                        <th>Fecha</th>
+                                        <th>Sucursal</th>
                                         <th>Estatus</th>
                                         <th>Acciones</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {pedidosData
-                                        .filter((p) => searchTerm === "" || p.id.toString().includes(searchTerm))
-                                        .map((pedido) => {
-                                            const productos = pedido.detalles?.map((d) => `${d.productoNombre} (${d.cantidad})`).join(", ") || "Sin detalles";
-                                            const estatus = pedido.estatusGeneral || "Pendiente";
-                                            return (
-                                                <tr key={pedido.id} className="table-row">
-                                                    <td>{pedido.id}</td>
-                                                    <td>{productos}</td>
-                                                    <td>${pedido.total.toFixed(2)}</td>
-                                                    <td>{new Date(pedido.fechaRegistro).toLocaleDateString()}</td>
-                                                    <td>
-                                                        <span className={`status ${estatus === "Pendiente" ? "status-pending" : "status-completed"}`}>
-                                                            {estatus}
-                                                        </span>
-                                                    </td>
-                                                    <td>
-                                                        <button className="action-button" onClick={() => handleVerPedido(pedido)}>
-                                                            Ver Pedido
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
+                                    {pedidosData.length > 0 ? (
+                                        pedidosData
+                                            .filter((p) => searchTerm === "" || p.id.toString().includes(searchTerm))
+                                            .map((pedido) => {
+                                                const estatus = pedido.estatusGeneral || "Pagado";
+                                                const statusClass = estatus === "Pagado" ? "status-paid" : 
+                                                                  estatus === "Completado" ? "status-completed" : "status-pending";
+                                                
+                                                return (
+                                                    <tr key={pedido.id} className="table-row">
+                                                        <td>{pedido.id}</td>
+                                                        <td>{pedido.producto}</td>
+                                                        <td>{pedido.cantidad} kg</td>
+                                                        <td>${pedido.total?.toFixed(2) || '0.00'}</td>
+                                                        <td>{pedido.sucursal}</td>
+                                                        <td>
+                                                            <span className={`status ${statusClass}`}>
+                                                                {estatus}
+                                                            </span>
+                                                        </td>
+                                                        <td>
+                                                            <div className="action-buttons">
+                                                                <button 
+                                                                    className="action-button view" 
+                                                                    onClick={() => handleVerPedido(pedido)}
+                                                                    title="Ver detalles"
+                                                                >
+                                                                    <img src={icons.view} alt="Ver" className="action-icon" />
+                                                                </button>
+                                                                <button 
+                                                                    className="action-button edit" 
+                                                                    onClick={() => handleEditarPedido(pedido)}
+                                                                    title="Editar pedido"
+                                                                >
+                                                                    <img src={icons.edit} alt="Editar" className="action-icon" />
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })
+                                    ) : (
+                                        <tr>
+                                            <td colSpan="7" className="empty-state">
+                                                <div className="empty-icon">📦</div>
+                                                <p>No hay pedidos para esta empresa</p>
+                                                <small>Haz clic en "Nuevo Pedido" para comenzar</small>
+                                            </td>
+                                        </tr>
+                                    )}
                                 </tbody>
                             </table>
                         )}
@@ -340,209 +555,307 @@ function Pedidos() {
                 </main>
             </div>
 
-            {/* MODAL */}
+            {/* MODAL CREAR PEDIDO */}
             {modalVisible && (
                 <div className="modal-overlay" onClick={() => setModalVisible(false)}>
-                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-                        <h2>Agregar Pedido</h2>
-
-                        <div className="form-group">
-                            <label>Empresa *</label>
-                            <select
-                                value={nuevoPedido.fkEmpresa}
-                                onChange={(e) => setNuevoPedido({ ...nuevoPedido, fkEmpresa: Number(e.target.value) })}
-                            >
-                                <option value={0}>Selecciona Empresa</option>
-                                {empresas.map((empresa) => (
-                                    <option key={empresa.id} value={empresa.id}>
-                                        {empresa.nombreEmpresa}
-                                    </option>
-                                ))}
-                            </select>
+                    <div className="modal-content modal-pedidos" onClick={(e) => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h2>Agregar Pedido</h2>
+                            <button className="modal-close" onClick={() => setModalVisible(false)}>
+                                <img src={icons.close} alt="Cerrar" />
+                            </button>
                         </div>
-
-                        <div className="form-group">
-                            <label>Total del Pedido *</label>
-                            <input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                value={nuevoPedido.total}
-                                onChange={(e) => setNuevoPedido({ ...nuevoPedido, total: e.target.value })}
-                                placeholder="0.00"
-                            />
-                        </div>
-
-                        <h3>Información de Pago</h3>
-                        <div className="form-group">
-                            <label>Nombre Titular *</label>
-                            <input
-                                type="text"
-                                value={nuevoPedido.pago.nombreTitular}
-                                onChange={(e) => handleInputText(e, "nombreTitular", "pago")}
-                                placeholder="Juan Pérez"
-                            />
-                        </div>
-                        <div className="form-group">
-                            <label>Método de Pago *</label>
-                            <select
-                                value={nuevoPedido.pago.metodoPago}
-                                onChange={(e) => setNuevoPedido({ 
-                                    ...nuevoPedido, 
-                                    pago: { ...nuevoPedido.pago, metodoPago: e.target.value } 
-                                })}
-                            >
-                                <option value="">Seleccionar</option>
-                                <option value="Tarjeta">Tarjeta</option>
-                                <option value="Efectivo">Efectivo</option>
-                                <option value="Transferencia">Transferencia</option>
-                            </select>
-                        </div>
-                        <div className="form-group">
-                            <label>Número de Tarjeta *</label>
-                            <input
-                                type="text"
-                                value={nuevoPedido.pago.numeroEnmascarado.replace(/(\d{4})/g, "$1 ").trim()}
-                                maxLength={19}
-                                onChange={(e) => handlePagoNumber(e, "numeroEnmascarado")}
-                                placeholder="1234 5678 9012 3456"
-                            />
-                        </div>
-                        <div className="form-group">
-                            <label>Marca Tarjeta *</label>
-                            <select
-                                value={nuevoPedido.pago.marcaTarjeta}
-                                onChange={(e) => setNuevoPedido({ 
-                                    ...nuevoPedido, 
-                                    pago: { ...nuevoPedido.pago, marcaTarjeta: e.target.value } 
-                                })}
-                            >
-                                <option value="">Seleccionar</option>
-                                <option value="Visa">Visa</option>
-                                <option value="Mastercard">Mastercard</option>
-                                <option value="American Express">American Express</option>
-                            </select>
-                        </div>
-                        <div className="form-group">
-                            <label>Mes de Expiración *</label>
-                            <select
-                                value={nuevoPedido.pago.expMes}
-                                onChange={(e) => setNuevoPedido({ 
-                                    ...nuevoPedido, 
-                                    pago: { ...nuevoPedido.pago, expMes: e.target.value } 
-                                })}
-                            >
-                                <option value="">Mes</option>
-                                {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => {
-                                    const mesFormateado = String(m).padStart(2, "0");
-                                    return <option key={m} value={mesFormateado}>{mesFormateado}</option>;
-                                })}
-                            </select>
-                        </div>
-                        <div className="form-group">
-                            <label>Año de Expiración *</label>
-                            <select
-                                value={nuevoPedido.pago.expAnio}
-                                onChange={(e) => setNuevoPedido({ 
-                                    ...nuevoPedido, 
-                                    pago: { ...nuevoPedido.pago, expAnio: e.target.value } 
-                                })}
-                            >
-                                <option value="">Año</option>
-                                {Array.from({ length: 11 }, (_, i) => 2025 + i).map((y) => (
-                                    <option key={y} value={y}>{y}</option>
-                                ))}
-                            </select>
-                        </div>
-
-                        <h3>Detalle del Pedido</h3>
-                        <div className="form-group">
-                            <label>Producto *</label>
-                            <input
-                                type="text"
-                                placeholder="Nombre del producto"
-                                value={detalleTemp.productoNombre}
-                                onChange={(e) => handleInputText(e, "productoNombre")}
-                            />
-                        </div>
-                        <div className="form-group">
-                            <label>Cantidad (kg) *</label>
-                            <input
-                                type="number"
-                                min={1}
-                                value={detalleTemp.cantidad}
-                                onFocus={(e) => e.target.select()}
-                                onChange={(e) => handleInputNumber(e, "cantidad")}
-                                placeholder="1"
-                            />
-                        </div>
-                        <div className="form-group">
-                            <label>Sucursales Asignadas *</label>
-                            <div style={{ maxHeight: '150px', overflowY: 'auto', border: '1px solid #ddd', padding: '10px', borderRadius: '4px' }}>
-                                {empresas.map((empresa) => (
-                                    <div key={empresa.id} style={{ marginBottom: '8px' }}>
-                                        <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                        <div className="form-container">
+                            {/* Sección Información General */}
+                            <div className="form-section">
+                                <h3 className="section-title">Información General</h3>
+                                <div className="form-row">
+                                    {empresaActual && (
+                                        <div className="form-group empresa-asignada">
+                                            <label className="required">Empresa</label>
                                             <input
-                                                type="checkbox"
-                                                checked={detalleTemp.sucursalesAsignadas.includes(empresa.id)}
-                                                onChange={() => handleSucursalChange(empresa.id)}
-                                                style={{ marginRight: '8px' }}
+                                                type="text"
+                                                value={empresaActual.nombreEmpresa}
+                                                disabled
                                             />
-                                            {empresa.nombreEmpresa}
-                                        </label>
+                                            <div className="info-text">
+                                                Esta empresa está asignada desde el sistema
+                                            </div>
+                                        </div>
+                                    )}
+                                    <div className="form-group">
+                                        <label className="required">Total del Pedido</label>
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            step="0.01"
+                                            value={nuevoPedido.total}
+                                            disabled
+                                            className="total-disabled"
+                                            placeholder="0.00"
+                                        />
+                                        <div className="info-text">
+                                            Total calculado automáticamente: ${nuevoPedido.total.toFixed(2)}
+                                        </div>
                                     </div>
-                                ))}
+                                </div>
                             </div>
-                            <small style={{ color: '#666', display: 'block', marginTop: '5px' }}>
-                                Seleccionadas: {detalleTemp.sucursalesAsignadas.length}
-                            </small>
-                        </div>
 
-                        <div className="modal-actions">
-                            <button className="btn-cancel" onClick={() => setModalVisible(false)}>
-                                Cancelar
-                            </button>
-                            <button className="btn-submit" onClick={handleAgregarDetalle}>
-                                Agregar Detalle
-                            </button>
-                            <button className="btn-submit" onClick={handleAgregarPedido} style={{ backgroundColor: '#27ae60' }}>
-                                Guardar Pedido
-                            </button>
-                        </div>
+                            {/* Sección Información de Pago */}
+                            <div className="form-section payment-section">
+                                <h3 className="section-title">Información de Pago</h3>
+                                <div className="form-row">
+                                    <div className="form-group">
+                                        <label className="required">Nombre Titular</label>
+                                        <input
+                                            type="text"
+                                            value={nuevoPedido.pago.nombreTitular}
+                                            onChange={(e) => handleInputText(e, "nombreTitular", "pago")}
+                                            placeholder="Juan Pérez"
+                                        />
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="required">Método de Pago</label>
+                                        <select
+                                            value={nuevoPedido.pago.metodoPago}
+                                            onChange={(e) => setNuevoPedido({
+                                                ...nuevoPedido,
+                                                pago: { ...nuevoPedido.pago, metodoPago: e.target.value }
+                                            })}
+                                        >
+                                            <option value="">Seleccionar</option>
+                                            <option value="Tarjeta">Tarjeta</option>
+                                            <option value="Efectivo">Efectivo</option>
+                                            <option value="Transferencia">Transferencia</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div className="form-row">
+                                    <div className="form-group">
+                                        <label className="required">Número de Tarjeta</label>
+                                        <input
+                                            type="text"
+                                            value={nuevoPedido.pago.numeroEnmascarado.replace(/(\d{4})/g, "$1 ").trim()}
+                                            maxLength={19}
+                                            onChange={(e) => handlePagoNumber(e, "numeroEnmascarado")}
+                                            placeholder="1234 5678 9012 3456"
+                                            className="card-input"
+                                        />
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="required">Marca Tarjeta</label>
+                                        <select
+                                            value={nuevoPedido.pago.marcaTarjeta}
+                                            onChange={(e) => setNuevoPedido({
+                                                ...nuevoPedido,
+                                                pago: { ...nuevoPedido.pago, marcaTarjeta: e.target.value }
+                                            })}
+                                        >
+                                            <option value="">Seleccionar</option>
+                                            <option value="Visa">Visa</option>
+                                            <option value="Mastercard">Mastercard</option>
+                                            <option value="American Express">American Express</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div className="form-row">
+                                    <div className="form-group">
+                                        <label className="required">Mes de Expiración</label>
+                                        <select
+                                            value={nuevoPedido.pago.expMes}
+                                            onChange={(e) => setNuevoPedido({
+                                                ...nuevoPedido,
+                                                pago: { ...nuevoPedido.pago, expMes: e.target.value }
+                                            })}
+                                        >
+                                            <option value="">Mes</option>
+                                            {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => {
+                                                const mesFormateado = String(m).padStart(2, "0");
+                                                return <option key={m} value={mesFormateado}>{mesFormateado}</option>;
+                                            })}
+                                        </select>
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="required">Año de Expiración</label>
+                                        <select
+                                            value={nuevoPedido.pago.expAnio}
+                                            onChange={(e) => setNuevoPedido({
+                                                ...nuevoPedido,
+                                                pago: { ...nuevoPedido.pago, expAnio: e.target.value }
+                                            })}
+                                        >
+                                            <option value="">Año</option>
+                                            {Array.from({ length: 11 }, (_, i) => 2025 + i).map((y) => (
+                                                <option key={y} value={y}>{y}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
 
-                        {nuevoPedido.detalles.length > 0 && (
-                            <div style={{ marginTop: '20px' }}>
-                                <h3>Detalles Agregados ({nuevoPedido.detalles.length})</h3>
-                                <table className="details-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Producto</th>
-                                            <th>Cantidad</th>
-                                            <th>Sucursales</th>
-                                            <th>Acciones</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {nuevoPedido.detalles.map((d, idx) => (
-                                            <tr key={idx}>
-                                                <td>{d.productoNombre}</td>
-                                                <td>{d.cantidad} kg</td>
-                                                <td>{d.sucursalesAsignadas.length} sucursal(es)</td>
-                                                <td>
-                                                    <button
-                                                        className="btn-cancel"
-                                                        onClick={() => handleEliminarDetalle(idx)}
-                                                        style={{ padding: '5px 10px', fontSize: '12px' }}
-                                                    >
-                                                        Eliminar
-                                                    </button>
-                                                </td>
-                                            </tr>
+                            {/* Sección Detalle del Pedido */}
+                            <div className="form-section details-section">
+                                <h3 className="section-title">Detalle del Pedido</h3>
+                                <div className="form-row">
+                                    <div className="form-group">
+                                        <label className="required">Producto</label>
+                                        <input
+                                            type="text"
+                                            value={detalleTemp.productoNombre}
+                                            disabled
+                                            className="producto-disabled"
+                                        />
+                                        <div className="info-text">
+                                            Precio por kilo: ${PRECIO_TORTILLA}.00
+                                        </div>
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="required">Cantidad (kg)</label>
+                                        <input
+                                            type="number"
+                                            min={1}
+                                            value={detalleTemp.cantidad}
+                                            onFocus={(e) => e.target.select()}
+                                            onChange={(e) => handleInputNumber(e, "cantidad")}
+                                            placeholder="1"
+                                        />
+                                        <div className="info-text">
+                                            Subtotal: ${detalleTemp.cantidad ? (detalleTemp.cantidad * PRECIO_TORTILLA).toFixed(2) : '0.00'}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="form-group">
+                                    <label className="required">Sucursales Asignadas</label>
+                                    <div className="checkbox-group">
+                                        {sucursales.map((sucursal) => (
+                                            <div key={sucursal.sucursalId} className="checkbox-item">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={detalleTemp.sucursalesAsignadas.includes(sucursal.sucursalId)}
+                                                    onChange={() => handleSucursalChange(sucursal.sucursalId)}
+                                                />
+                                                <label>{sucursal.nombreSucursal}</label>
+                                            </div>
                                         ))}
-                                    </tbody>
-                                </table>
+                                    </div>
+                                    <div className="selection-counter">
+                                        Seleccionadas: {detalleTemp.sucursalesAsignadas.length}
+                                    </div>
+                                </div>
+                                <div className="modal-actions">
+                                    <button className="btn-add-detail" onClick={handleAgregarDetalle}>
+                                        Agregar Detalle
+                                    </button>
+                                </div>
                             </div>
-                        )}
+
+                            {/* Detalles Agregados */}
+                            {nuevoPedido.detalles.length > 0 ? (
+                                <div className="form-section">
+                                    <h3 className="section-title">
+                                        Detalles Agregados
+                                        <span className="details-count">{nuevoPedido.detalles.length}</span>
+                                    </h3>
+                                    <div className="details-table-wrapper">
+                                        <table className="details-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Producto</th>
+                                                    <th>Cantidad (kg)</th>
+                                                    <th>Subtotal</th>
+                                                    <th>Sucursales</th>
+                                                    <th>Acciones</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {nuevoPedido.detalles.map((d, idx) => (
+                                                    <tr key={idx}>
+                                                        <td>{d.productoNombre}</td>
+                                                        <td>{d.cantidad} kg</td>
+                                                        <td>${(d.cantidad * PRECIO_TORTILLA).toFixed(2)}</td>
+                                                        <td>{d.sucursalesAsignadas.length} sucursal(es)</td>
+                                                        <td>
+                                                            <button
+                                                                className="btn-delete"
+                                                                onClick={() => handleEliminarDetalle(idx)}
+                                                            >
+                                                                Eliminar
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="empty-details">
+                                    No hay detalles agregados
+                                </div>
+                            )}
+
+                            {/* Acciones Finales */}
+                            <div className="modal-actions">
+                                <button className="btn-cancel" onClick={() => setModalVisible(false)}>
+                                    Cancelar
+                                </button>
+                                <button className="btn-submit" onClick={handleAgregarPedido}>
+                                    Guardar Pedido
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL EDITAR PEDIDO */}
+            {editModalVisible && (
+                <div className="modal-overlay" onClick={() => setEditModalVisible(false)}>
+                    <div className="modal-content modal-pedidos" onClick={(e) => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h2>Editar Pedido #{pedidoSeleccionado?.id}</h2>
+                            <button className="modal-close" onClick={() => setEditModalVisible(false)}>
+                                <img src={icons.close} alt="Cerrar" />
+                            </button>
+                        </div>
+                        <div className="form-container">
+                            <div className="form-section">
+                                <h3 className="section-title">Información del Pedido</h3>
+                                <div className="form-row">
+                                    <div className="form-group">
+                                        <label className="required">Estatus General</label>
+                                        <select
+                                            value={pedidoEdit.estatusGeneral}
+                                            onChange={(e) => setPedidoEdit({...pedidoEdit, estatusGeneral: e.target.value})}
+                                        >
+                                            <option value="Pagado">Pagado</option>
+                                            <option value="En proceso">En proceso</option>
+                                            <option value="Completado">Completado</option>
+                                            <option value="Cancelado">Cancelado</option>
+                                        </select>
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="required">Total</label>
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            step="0.01"
+                                            value={pedidoEdit.total}
+                                            onChange={(e) => setPedidoEdit({...pedidoEdit, total: e.target.value})}
+                                            placeholder="0.00"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="modal-actions">
+                                <button className="btn-cancel" onClick={() => setEditModalVisible(false)}>
+                                    Cancelar
+                                </button>
+                                <button className="btn-submit" onClick={handleActualizarPedido}>
+                                    Actualizar Pedido
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}

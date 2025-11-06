@@ -1,48 +1,20 @@
-import React from "react";
+// src/pages/Inicio.js
+import React, { useState, useEffect } from "react";
 import Navbar from "../components/Navbar";
 import Sidebar from "../components/Sidebar";
 import "../styles/Inicio.css";
 import { useNavigate } from "react-router-dom";
+import { getDashboardData } from "../services/apiInicio";
 
 function Inicio() {
   const usuario = localStorage.getItem("nombreUsuario") || "Usuario";
+  const empresaId = localStorage.getItem("empresaId") || 2;
   const navigate = useNavigate();
-
-  // Datos de ejemplo para las cards
-  const statsData = [
-    {
-      id: 1,
-      title: "Pedidos del Mes",
-      value: "24",
-      icon: "📦",
-      color: "#4CAF50",
-      description: "+5% vs mes anterior"
-    },
-    {
-      id: 2,
-      title: "Sucursales Activas",
-      value: "8",
-      icon: "🏪",
-      color: "#2196F3",
-      description: "Todas operativas"
-    },
-    {
-      id: 3,
-      title: "Clientes Satisfechos",
-      value: "95%",
-      icon: "⭐",
-      color: "#FF9800",
-      description: "Rating promedio 4.8/5"
-    },
-    {
-      id: 4,
-      title: "Entregas a Tiempo",
-      value: "98%",
-      icon: "⏱️",
-      color: "#9C27B0",
-      description: "Excelente desempeño"
-    }
-  ];
+  
+  const [statsData, setStatsData] = useState([]);
+  const [systemInfo, setSystemInfo] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const quickActions = [
     {
@@ -71,17 +43,70 @@ function Inicio() {
     }
   ];
 
+  // Cargar datos del dashboard
+  useEffect(() => {
+    const cargarDashboard = async () => {
+      try {
+        setLoading(true);
+        const dashboardData = await getDashboardData(empresaId);
+        
+        setStatsData(dashboardData.statsData);
+        setSystemInfo(dashboardData.systemInfo);
+        setError(null);
+      } catch (error) {
+        console.error('Error cargando dashboard:', error);
+        setError("Error al cargar los datos del dashboard");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    cargarDashboard();
+  }, [empresaId]);
+
+  if (loading) {
+    return (
+      <div className="inicio-container">
+        <Navbar usuario={usuario} />
+        <div className="content-wrapper">
+          <Sidebar />
+          <main className="main-content">
+            <div className="loading-section">
+              <p>Cargando datos del dashboard...</p>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="inicio-container">
+        <Navbar usuario={usuario} />
+        <div className="content-wrapper">
+          <Sidebar />
+          <main className="main-content">
+            <div className="error-section">
+              <p>{error}</p>
+              <button onClick={() => window.location.reload()}>
+                Reintentar
+              </button>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="inicio-container">
-      {/* Navbar común */}
       <Navbar usuario={usuario} />
 
       <div className="content-wrapper">
-        {/* Sidebar común */}
         <Sidebar />
 
         <main className="main-content">
-          {/* Sección de Bienvenida */}
           <div className="welcome-section">
             <div className="welcome-header">
               <h1>¡Bienvenido de vuelta, {usuario}! 👋</h1>
@@ -150,15 +175,15 @@ function Inicio() {
                 <div className="info-content">
                   <div className="info-item">
                     <span className="info-label">Uptime:</span>
-                    <span className="info-value">99.9%</span>
+                    <span className="info-value">{systemInfo.uptime}</span>
                   </div>
                   <div className="info-item">
                     <span className="info-label">Pedidos hoy:</span>
-                    <span className="info-value">12</span>
+                    <span className="info-value">{systemInfo.pedidosHoy}</span>
                   </div>
                   <div className="info-item">
                     <span className="info-label">Sucursales online:</span>
-                    <span className="info-value">8/8</span>
+                    <span className="info-value">{systemInfo.sucursalesOnline}</span>
                   </div>
                 </div>
               </div>
@@ -168,28 +193,30 @@ function Inicio() {
                 <div className="info-content">
                   <div className="goal-item">
                     <span className="goal-text">
-                      Alcanzar 100 pedidos este mes
+                      Alcanzar {systemInfo.metaPedidos} pedidos este mes
                     </span>
                     <div className="goal-progress">
                       <div className="progress-bar">
                         <div
                           className="progress-fill"
-                          style={{ width: "75%" }}
+                          style={{ width: `${systemInfo.progresoPedidos}%` }}
                         ></div>
                       </div>
-                      <span>75%</span>
+                      <span>{systemInfo.progresoPedidos}%</span>
                     </div>
                   </div>
                   <div className="goal-item">
-                    <span className="goal-text">Abrir 2 nuevas sucursales</span>
+                    <span className="goal-text">
+                      Alcanzar {systemInfo.metaSucursales} sucursales activas
+                    </span>
                     <div className="goal-progress">
                       <div className="progress-bar">
                         <div
                           className="progress-fill"
-                          style={{ width: "40%" }}
+                          style={{ width: `${systemInfo.progresoSucursales}%` }}
                         ></div>
                       </div>
-                      <span>40%</span>
+                      <span>{systemInfo.progresoSucursales}%</span>
                     </div>
                   </div>
                 </div>
