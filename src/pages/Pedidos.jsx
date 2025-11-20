@@ -68,10 +68,9 @@ function Pedidos() {
             const data = await ApiPedidos.obtenerPedidosPorEmpresa(empresaId);
             console.log('Datos recibidos:', data);
             
-            // La API ya devuelve los datos en el formato correcto
-            // Cada objeto ya tiene: idPedido, producto, cantidad, total, sucursal, estatusGeneral, etc.
+            // La API ya devuelve los datos en el formato correcto con "id" en lugar de "idPedido"
             const pedidosTransformados = data.map(pedido => ({
-                id: pedido.idPedido,
+                id: pedido.id, // Usar id directamente
                 producto: pedido.producto || "Sin producto",
                 cantidad: pedido.cantidad || 0,
                 total: pedido.total || 0,
@@ -87,7 +86,9 @@ function Pedidos() {
                 colonia: pedido.colonia,
                 codigoPostal: pedido.codigoPostal,
                 ciudad: pedido.ciudad,
-                estado: pedido.estado
+                estado: pedido.estado,
+                latitud: pedido.latitud,
+                longitud: pedido.longitud
             }));
             
             setPedidosData(pedidosTransformados);
@@ -161,6 +162,37 @@ function Pedidos() {
         calcularTotal();
     }, [nuevoPedido.detalles]);
 
+    // Función para generar detalles automáticamente
+    const generarDetallesAutomaticos = useCallback(() => {
+        if (!detalleTemp.cantidad || detalleTemp.cantidad <= 0) {
+            return;
+        }
+
+        const nuevosDetalles = detalleTemp.sucursalesAsignadas.map(sucursalId => {
+            const sucursal = sucursales.find(s => s.sucursalId === sucursalId);
+            return {
+                productoNombre: detalleTemp.productoNombre,
+                cantidad: Number(detalleTemp.cantidad),
+                estatusNombre: detalleTemp.estatusNombre,
+                sucursalesAsignadas: [sucursalId],
+                estatusDetalle: detalleTemp.estatusDetalle,
+                nombreSucursal: sucursal ? sucursal.nombreSucursal : `Sucursal ${sucursalId}`
+            };
+        });
+
+        setNuevoPedido(prev => ({
+            ...prev,
+            detalles: nuevosDetalles
+        }));
+    }, [detalleTemp, sucursales]);
+
+    // Generar detalles automáticamente cuando cambian las sucursales seleccionadas
+    useEffect(() => {
+        if (detalleTemp.sucursalesAsignadas.length > 0 && detalleTemp.cantidad) {
+            generarDetallesAutomaticos();
+        }
+    }, [detalleTemp.sucursalesAsignadas, detalleTemp.cantidad, generarDetallesAutomaticos]);
+
     // Handlers para inputs de texto
     const handleInputText = (e, field, target = "detalle") => {
         const value = e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, "");
@@ -196,38 +228,10 @@ function Pedidos() {
         });
     };
 
-    // Agregar detalle al pedido
-    const handleAgregarDetalle = () => {
-        if (
-            detalleTemp.productoNombre.trim() === "" ||
-            !detalleTemp.cantidad ||
-            detalleTemp.sucursalesAsignadas.length === 0
-        ) {
-            Swal.fire("Error", "Completa todos los campos del detalle correctamente.", "error");
-            return;
-        }
-        setNuevoPedido((prev) => ({
-            ...prev,
-            detalles: [
-                ...prev.detalles,
-                {
-                    ...detalleTemp,
-                    cantidad: Number(detalleTemp.cantidad)
-                }
-            ]
-        }));
-        // Limpiar solo cantidad, mantener sucursales seleccionadas
-        setDetalleTemp({
-            ...detalleTemp,
-            cantidad: "",
-        });
-        Swal.fire("Éxito", "Detalle agregado correctamente", "success");
-    };
-
     // Crear nuevo pedido
     const handleAgregarPedido = async () => {
         if (nuevoPedido.detalles.length === 0) {
-            Swal.fire("Error", "Agrega al menos un detalle al pedido.", "error");
+            Swal.fire("Error", "Selecciona al menos una sucursal y especifica la cantidad.", "error");
             return;
         }
         if (nuevoPedido.total <= 0) {
@@ -346,6 +350,11 @@ function Pedidos() {
                 detallesHTML += `<p>${pedido.ciudad || ''}, ${pedido.estado || ''} - CP: ${pedido.codigoPostal || ''}</p>`;
             }
 
+            // Información de ubicación
+            if (pedido.latitud && pedido.longitud) {
+                detallesHTML += `<p><strong>Ubicación:</strong> ${pedido.latitud}, ${pedido.longitud}</p>`;
+            }
+
             // Si la API devuelve información de pago
             if (pedidoCompleto.pago) {
                 detallesHTML += "<h4>Información de Pago:</h4>";
@@ -379,6 +388,12 @@ function Pedidos() {
                     ? new Date(pedido.fechaRegistro).toLocaleDateString('es-MX')
                     : 'Fecha no disponible'
             }</p>`;
+            
+            // Información de dirección si está disponible
+            if (pedido.calle) {
+                detallesHTML += `<p><strong>Dirección:</strong> ${pedido.calle} ${pedido.numero || ''}, ${pedido.colonia || ''}, ${pedido.ciudad || ''}, ${pedido.estado || ''}</p>`;
+            }
+            
             detallesHTML += "</div>";
 
             Swal.fire({
@@ -440,18 +455,30 @@ function Pedidos() {
             ...nuevoPedido,
             detalles: nuevoPedido.detalles.filter((_, i) => i !== index)
         });
+        
+        // También eliminar la sucursal correspondiente de la selección
+        const detalleEliminado = nuevoPedido.detalles[index];
+        if (detalleEliminado) {
+            setDetalleTemp(prev => ({
+                ...prev,
+                sucursalesAsignadas: prev.sucursalesAsignadas.filter(s => s !== detalleEliminado.sucursalesAsignadas[0])
+            }));
+        }
     };
 
     // Manejar cambio de sucursales
     const handleSucursalChange = (sucursalId) => {
         const sucursalesActuales = detalleTemp.sucursalesAsignadas;
         const idNumerico = Number(sucursalId);
+        
         if (sucursalesActuales.includes(idNumerico)) {
+            // Remover sucursal
             setDetalleTemp({
                 ...detalleTemp,
                 sucursalesAsignadas: sucursalesActuales.filter(s => s !== idNumerico)
             });
         } else {
+            // Agregar sucursal
             setDetalleTemp({
                 ...detalleTemp,
                 sucursalesAsignadas: [...sucursalesActuales, idNumerico]
@@ -726,6 +753,10 @@ function Pedidos() {
                             {/* Sección Detalle del Pedido */}
                             <div className="form-section details-section">
                                 <h3 className="section-title">Detalle del Pedido</h3>
+                                <div className="info-banner">
+                                    <strong>⚠️ Los detalles se generan automáticamente</strong>
+                                    <p>Selecciona las sucursales y especifica la cantidad. Se creará un detalle por cada sucursal seleccionada.</p>
+                                </div>
                                 <div className="form-row">
                                     <div className="form-group">
                                         <label className="required">Producto</label>
@@ -740,7 +771,7 @@ function Pedidos() {
                                         </div>
                                     </div>
                                     <div className="form-group">
-                                        <label className="required">Cantidad (kg)</label>
+                                        <label className="required">Cantidad por Sucursal (kg)</label>
                                         <input
                                             type="number"
                                             min={1}
@@ -750,7 +781,7 @@ function Pedidos() {
                                             placeholder="1"
                                         />
                                         <div className="info-text">
-                                            Subtotal: ${detalleTemp.cantidad ? (detalleTemp.cantidad * PRECIO_TORTILLA).toFixed(2) : '0.00'}
+                                            Subtotal por sucursal: ${detalleTemp.cantidad ? (detalleTemp.cantidad * PRECIO_TORTILLA).toFixed(2) : '0.00'}
                                         </div>
                                     </div>
                                 </div>
@@ -769,13 +800,9 @@ function Pedidos() {
                                         ))}
                                     </div>
                                     <div className="selection-counter">
-                                        Seleccionadas: {detalleTemp.sucursalesAsignadas.length}
+                                        Seleccionadas: {detalleTemp.sucursalesAsignadas.length} | 
+                                        Detalles generados: {nuevoPedido.detalles.length}
                                     </div>
-                                </div>
-                                <div className="modal-actions">
-                                    <button className="btn-add-detail" onClick={handleAgregarDetalle}>
-                                        Agregar Detalle
-                                    </button>
                                 </div>
                             </div>
 
@@ -783,27 +810,27 @@ function Pedidos() {
                             {nuevoPedido.detalles.length > 0 ? (
                                 <div className="form-section">
                                     <h3 className="section-title">
-                                        Detalles Agregados
+                                        Detalles Generados Automáticamente
                                         <span className="details-count">{nuevoPedido.detalles.length}</span>
                                     </h3>
                                     <div className="details-table-wrapper">
                                         <table className="details-table">
                                             <thead>
                                                 <tr>
+                                                    <th>Sucursal</th>
                                                     <th>Producto</th>
                                                     <th>Cantidad (kg)</th>
                                                     <th>Subtotal</th>
-                                                    <th>Sucursales</th>
                                                     <th>Acciones</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 {nuevoPedido.detalles.map((d, idx) => (
                                                     <tr key={idx}>
+                                                        <td>{d.nombreSucursal || `Sucursal ${d.sucursalesAsignadas[0]}`}</td>
                                                         <td>{d.productoNombre}</td>
                                                         <td>{d.cantidad} kg</td>
                                                         <td>${(d.cantidad * PRECIO_TORTILLA).toFixed(2)}</td>
-                                                        <td>{d.sucursalesAsignadas.length} sucursal(es)</td>
                                                         <td>
                                                             <button
                                                                 className="btn-delete"
@@ -820,7 +847,9 @@ function Pedidos() {
                                 </div>
                             ) : (
                                 <div className="empty-details">
-                                    No hay detalles agregados
+                                    {detalleTemp.sucursalesAsignadas.length > 0 && detalleTemp.cantidad 
+                                        ? "Generando detalles..." 
+                                        : "No hay detalles generados. Selecciona sucursales y especifica la cantidad."}
                                 </div>
                             )}
 
