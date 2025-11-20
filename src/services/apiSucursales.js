@@ -1,185 +1,125 @@
 const API_BASE_URL = "https://sistematortillasbackend-1.onrender.com";
 
 class ApiSucursales {
-  // GET: Obtener todas las sucursales
-  static async obtenerSucursales() {
+  static async makeRequest(url, options = {}) {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/Sucursal`, {
-        method: "GET",
-        headers: { "Content-Type": "application/json" }
-      });
-      if (!response.ok) throw new Error(`Error al obtener sucursales: ${response.status}`);
+      const defaultOptions = {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        ...options
+      };
+
+      console.log(`🌐 API Call: ${url}`, options.body ? JSON.parse(options.body) : '');
+
+      const response = await fetch(url, defaultOptions);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText || response.statusText}`);
+      }
+
+      // Para DELETE que puede no retornar contenido
+      if (response.status === 204 || response.headers.get('content-length') === '0') {
+        return true;
+      }
+
       return await response.json();
     } catch (error) {
-      console.error("Error en obtenerSucursales:", error);
+      console.error(`❌ API Error [${url}]:`, error);
       throw error;
     }
+  }
+
+  // GET: Obtener todas las sucursales
+  static async obtenerSucursales() {
+    return this.makeRequest(`${API_BASE_URL}/api/Sucursal`);
   }
 
   // GET: Obtener una sucursal por ID
   static async obtenerSucursalPorId(id) {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/Sucursal/${id}`, {
-        method: "GET",
-        headers: { "Content-Type": "application/json" }
-      });
-      if (!response.ok) throw new Error(`Error al obtener sucursal: ${response.status}`);
-      return await response.json();
-    } catch (error) {
-      console.error("Error en obtenerSucursalPorId:", error);
-      throw error;
-    }
+    if (!id) throw new Error('ID de sucursal es requerido');
+    return this.makeRequest(`${API_BASE_URL}/api/Sucursal/${id}`);
   }
 
   // GET: Obtener sucursales por empresa
   static async obtenerSucursalesPorEmpresa(fkEmpresa) {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/Sucursal/empresa/${fkEmpresa}`, {
-        method: "GET",
-        headers: { "Content-Type": "application/json" }
-      });
-      if (!response.ok) throw new Error(`Error al obtener sucursales por empresa: ${response.status}`);
-      return await response.json();
-    } catch (error) {
-      console.error("Error en obtenerSucursalesPorEmpresa:", error);
-      throw error;
-    }
+    if (!fkEmpresa) throw new Error('fkEmpresa es requerido');
+    return this.makeRequest(`${API_BASE_URL}/api/Sucursal/empresa/${fkEmpresa}`);
   }
 
-  // POST: Crear nueva sucursal (incluyendo dirección anidada)
+  // POST: Crear nueva sucursal
   static async crearSucursal(sucursalData) {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/Sucursal`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(sucursalData)
-      });
-      if (!response.ok) {
-        const errorData = await response.text();
-        throw new Error(`Error al crear sucursal: ${response.status} - ${errorData}`);
-      }
-      return await response.json();
-    } catch (error) {
-      console.error("Error en crearSucursal:", error);
-      throw error;
+    if (!sucursalData) throw new Error('Datos de sucursal son requeridos');
+    
+    // Validar formato básico
+    if (!sucursalData.nombreSucursal || !sucursalData.fkEmpresa) {
+      throw new Error('Nombre de sucursal y fkEmpresa son requeridos');
     }
+
+    return this.makeRequest(`${API_BASE_URL}/api/Sucursal`, {
+      method: 'POST',
+      body: JSON.stringify(sucursalData)
+    });
   }
 
-  // PUT: Actualizar sucursal (incluyendo dirección anidada)
+  // PUT: Actualizar sucursal
   static async actualizarSucursal(sucursalData) {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/Sucursal`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(sucursalData)
-      });
-      if (!response.ok) {
-        const errorData = await response.text();
-        throw new Error(`Error al actualizar sucursal: ${response.status} - ${errorData}`);
-      }
-      return await response.json();
-    } catch (error) {
-      console.error("Error en actualizarSucursal:", error);
-      throw error;
+    if (!sucursalData || !sucursalData.sucursalId) {
+      throw new Error('Datos de sucursal y sucursalId son requeridos');
     }
+
+    return this.makeRequest(`${API_BASE_URL}/api/Sucursal`, {
+      method: 'PUT',
+      body: JSON.stringify(sucursalData)
+    });
   }
 
   // DELETE: Eliminar sucursal
   static async eliminarSucursal(sucursalId) {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/Sucursal/${sucursalId}`, {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" }
-      });
-      if (!response.ok) throw new Error(`Error al eliminar sucursal: ${response.status}`);
-      return true; // DELETE puede no retornar JSON
-    } catch (error) {
-      console.error("Error en eliminarSucursal:", error);
-      throw error;
-    }
+    if (!sucursalId) throw new Error('ID de sucursal es requerido');
+    return this.makeRequest(`${API_BASE_URL}/api/Sucursal/${sucursalId}`, {
+      method: 'DELETE'
+    });
   }
 
   // GET: Obtener todas las empresas
   static async obtenerEmpresas() {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/Empresa`, {
-        method: "GET",
-        headers: { "Content-Type": "application/json" }
-      });
-      if (!response.ok) throw new Error(`Error al obtener empresas: ${response.status}`);
-      return await response.json();
-    } catch (error) {
-      console.error("Error en obtenerEmpresas:", error);
-      throw error;
-    }
+    return this.makeRequest(`${API_BASE_URL}/api/Empresa`);
   }
 
   // GET: Obtener una empresa por ID
   static async obtenerEmpresaPorId(id) {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/Empresa/${id}`, {
-        method: "GET",
-        headers: { "Content-Type": "application/json" }
-      });
-      if (!response.ok) throw new Error(`Error al obtener empresa: ${response.status}`);
-      return await response.json();
-    } catch (error) {
-      console.error("Error en obtenerEmpresaPorId:", error);
-      throw error;
-    }
+    if (!id) throw new Error('ID de empresa es requerido');
+    return this.makeRequest(`${API_BASE_URL}/api/Empresa/${id}`);
   }
 
   // POST: Crear nueva empresa
   static async crearEmpresa(empresaData) {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/Empresa`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(empresaData)
-      });
-      if (!response.ok) {
-        const errorData = await response.text();
-        throw new Error(`Error al crear empresa: ${response.status} - ${errorData}`);
-      }
-      return await response.json();
-    } catch (error) {
-      console.error("Error en crearEmpresa:", error);
-      throw error;
-    }
+    if (!empresaData) throw new Error('Datos de empresa son requeridos');
+    return this.makeRequest(`${API_BASE_URL}/api/Empresa`, {
+      method: 'POST',
+      body: JSON.stringify(empresaData)
+    });
   }
 
   // PUT: Actualizar empresa
   static async actualizarEmpresa(empresaData) {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/Empresa/${empresaData.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(empresaData)
-      });
-      if (!response.ok) {
-        const errorData = await response.text();
-        throw new Error(`Error al actualizar empresa: ${response.status} - ${errorData}`);
-      }
-      return await response.json();
-    } catch (error) {
-      console.error("Error en actualizarEmpresa:", error);
-      throw error;
+    if (!empresaData || !empresaData.id) {
+      throw new Error('Datos de empresa y ID son requeridos');
     }
+    return this.makeRequest(`${API_BASE_URL}/api/Empresa/${empresaData.id}`, {
+      method: 'PUT',
+      body: JSON.stringify(empresaData)
+    });
   }
 
   // DELETE: Eliminar empresa
   static async eliminarEmpresa(id) {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/Empresa/${id}`, {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" }
-      });
-      if (!response.ok) throw new Error(`Error al eliminar empresa: ${response.status}`);
-      return true;
-    } catch (error) {
-      console.error("Error en eliminarEmpresa:", error);
-      throw error;
-    }
+    if (!id) throw new Error('ID de empresa es requerido');
+    return this.makeRequest(`${API_BASE_URL}/api/Empresa/${id}`, {
+      method: 'DELETE'
+    });
   }
 }
 
