@@ -14,21 +14,30 @@ function Sidebar() {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // 🔴 Cerrar sesión: borrar todo y regresar al login
+  const handleLogout = () => {
+    localStorage.clear();
+    navigate("/");
+  };
+
   return (
     <aside className="sidebar">
       <div className="sidebar-top">Menú Principal</div>
 
       <div className="sidebar-items">
+
+        {/* 🟢 INICIO */}
         <div
           className={`sidebar-item ${
-            location.pathname === "/" ? "active" : ""
+            location.pathname === "/inicio" ? "active" : ""
           }`}
-          onClick={() => navigate("/Inicio")}
+          onClick={() => navigate("/inicio")}
         >
           <img src={icons.inicio} alt="Inicio" className="icon" />
           <span>Inicio</span>
         </div>
 
+        {/* 🟢 PEDIDOS */}
         <div
           className={`sidebar-item ${
             location.pathname === "/pedidos" ? "active" : ""
@@ -39,6 +48,7 @@ function Sidebar() {
           <span>Pedidos</span>
         </div>
 
+        {/* 🟢 SUCURSALES */}
         <div
           className={`sidebar-item ${
             location.pathname === "/sucursales" ? "active" : ""
@@ -49,6 +59,7 @@ function Sidebar() {
           <span>Sucursales</span>
         </div>
 
+        {/* 🟢 CONFIGURACIONES */}
         <div
           className={`sidebar-item ${
             location.pathname === "/configuraciones" ? "active" : ""
@@ -60,12 +71,13 @@ function Sidebar() {
         </div>
       </div>
 
-      <div className="logout" onClick={() => navigate("/")}>
-                  <img
-              src="https://cdn-icons-png.flaticon.com/512/1828/1828427.png"
-              alt="Cerrar sesión"
-              className="icon"
-            />
+      {/* 🔴 CERRAR SESIÓN */}
+      <div className="logout" onClick={handleLogout}>
+        <img
+          src="https://cdn-icons-png.flaticon.com/512/1828/1828427.png"
+          alt="Cerrar sesión"
+          className="icon"
+        />
         <span>Cerrar sesión</span>
       </div>
     </aside>
