@@ -8,6 +8,7 @@ import Swal from "sweetalert2";
 import Navbar from "../components/Navbar";
 import Sidebar from "../components/Sidebar";
 import "leaflet-control-geocoder";
+import { usePagination } from "../hooks/usePagination";
 
 // Configuración de iconos de Leaflet (evita problemas con bundlers)
 delete L.Icon.Default.prototype._getIconUrl;
@@ -34,6 +35,14 @@ function Sucursales() {
     const markerRef = useRef(null);
     const allMapRef = useRef(null);
     const allMapInstanceRef = useRef(null);
+
+    // Usar el hook de paginación - CORREGIDO: usar paginatedData directamente
+    const {
+        currentPage,
+        totalPages,
+        paginatedData,
+        handlePageChange,
+    } = usePagination(sucursalesData, 10, searchTerm);
 
     // Obtener fkEmpresa del localStorage
     const getFkEmpresaFromStorage = useCallback(() => {
@@ -156,7 +165,6 @@ function Sucursales() {
         fetchEmpresa();
     }, [fetchSucursales, fetchEmpresa]);
 
-    // [Los demás useEffect del mapa permanecen igual...]
     // Inicializar mapa del modal (mapRef)
     useEffect(() => {
         if (!showModal || !mapRef.current) return;
@@ -260,8 +268,8 @@ function Sucursales() {
                     estado: data.estado,
                     cp: data.cp,
                     referencias: data.referencias || "",
-                    lat: coordinates.lat,
-                    lng: coordinates.lng
+                    latitud: coordinates.lat.toString(),
+                    longitud: coordinates.lng.toString()
                 }
             };
 
@@ -290,7 +298,7 @@ function Sucursales() {
                 correoElectronico: data.correoElectronico,
                 nombreEncargado: data.nombreEncargado,
                 fkEmpresa: Number(data.fkEmpresa) || fkEmpresa,
-                estatus: 1, // ✅ Siempre mantener estatus = 1 al actualizar
+                estatus: 1,
                 direccion: {
                     calle: data.calle,
                     numero: data.numero,
@@ -299,8 +307,8 @@ function Sucursales() {
                     estado: data.estado,
                     cp: data.cp,
                     referencias: data.referencias || "",
-                    lat: coordinates.lat,
-                    lng: coordinates.lng
+                    latitud: coordinates.lat.toString(),
+                    longitud: coordinates.lng.toString()
                 }
             };
 
@@ -381,7 +389,9 @@ function Sucursales() {
             ciudad: sucursal.ciudad ?? "",
             estado: sucursal.estado ?? "",
             cp: sucursal.cp ?? "",
-            referencias: sucursal.referencias ?? ""
+            referencias: sucursal.referencias ?? "",
+            latitud: sucursal.latitud ?? "",
+            longitud: sucursal.longitud ?? ""
         };
 
         setFormData({
@@ -402,8 +412,8 @@ function Sucursales() {
         setShowModal(true);
 
         setTimeout(async () => {
-            const lat = Number(sucursal.direccion?.lat ?? sucursal.lat ?? 0) || 0;
-            const lng = Number(sucursal.direccion?.lng ?? sucursal.lng ?? 0) || 0;
+            const lat = Number(direccion.latitud || sucursal.direccion?.lat || sucursal.lat || 0) || 0;
+            const lng = Number(direccion.longitud || sucursal.direccion?.lng || sucursal.lng || 0) || 0;
 
             if (lat && lng) {
                 setCoordinates({ lat, lng });
@@ -477,7 +487,6 @@ function Sucursales() {
                 const markers = [];
                 const geocodingPromises = [];
 
-                // ✅ FILTRAR: Solo mostrar sucursales activas en el mapa también
                 const sucursalesValidas = sucursalesData.filter(sucursal => {
                     const dir = sucursal.direccion || {
                         calle: sucursal.calle, numero: sucursal.numero, ciudad: sucursal.ciudad, estado: sucursal.estado
@@ -593,14 +602,6 @@ function Sucursales() {
         }
     };
 
-    // ✅ FILTRAR: Solo buscar entre sucursales activas
-    const filteredSucursales = sucursalesData.filter(sucursal =>
-        searchTerm === "" ||
-        (sucursal.nombreSucursal && sucursal.nombreSucursal.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (sucursal.correoElectronico && sucursal.correoElectronico.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (sucursal.nombreEncargado && sucursal.nombreEncargado.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
-
     const validateForm = () => {
         const errors = [];
         if (!formData.nombreSucursal) errors.push("El nombre de la sucursal es obligatorio.");
@@ -646,7 +647,13 @@ function Sucursales() {
                     <div className="header">
                         <div className="search-container">
                             <img src={icons.search} alt="Buscar" className="search-icon-left" />
-                            <input type="text" placeholder="Buscar por nombre, correo o encargado..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="search-input" />
+                            <input 
+                                type="text" 
+                                placeholder="Buscar por nombre, correo o encargado..." 
+                                value={searchTerm} 
+                                onChange={(e) => setSearchTerm(e.target.value)} 
+                                className="search-input" 
+                            />
                         </div>
                         <div className="header-buttons">
                             <button className="map-button" onClick={handleVerMapa}><img src={icons.map} alt="Mapa" className="button-icon" /> Ver en Mapa</button>
@@ -658,39 +665,62 @@ function Sucursales() {
                         {loading ? (
                             <div className="loading-state"><div className="spinner"></div><p>Cargando sucursales activas...</p></div>
                         ) : (
-                            <table className="table">
-                                <thead>
-                                    <tr className="table-header">
-                                        <th>ID</th>
-                                        <th>Nombre Sucursal</th>
-                                        <th>Encargado</th>
-                                        <th>Correo</th>
-                                        <th>Teléfono</th>
-                                        <th>Acciones</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {filteredSucursales.length === 0 ? (
-                                        <tr><td colSpan="6" className="empty-state"><div className="empty-icon">📭</div><p>No hay sucursales activas disponibles</p><small>Comienza agregando una nueva sucursal</small></td></tr>
-                                    ) : (
-                                        filteredSucursales.map((sucursal, index) => (
-                                            <tr key={sucursal.sucursalId || index} className="table-row">
-                                                <td><span className="table-badge">{sucursal.sucursalId}</span></td>
-                                                <td><strong>{sucursal.nombreSucursal}</strong></td>
-                                                <td>{sucursal.nombreEncargado}</td>
-                                                <td>{sucursal.correoElectronico}</td>
-                                                <td>{sucursal.telefono}</td>
-                                                <td>
-                                                    <div className="action-buttons">
-                                                        <button className="icon-button edit-button" onClick={() => handleEditSucursal(sucursal)} title="Editar"><img src={icons.edit} alt="Editar" className="action-icon" /></button>
-                                                        <button className="icon-button delete-button" onClick={() => handleDeleteSucursalConfirm(sucursal.sucursalId)} title="Eliminar"><img src={icons.delete} alt="Eliminar" className="action-icon" /></button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))
-                                    )}
-                                </tbody>
-                            </table>
+                            <>
+                                <table className="table">
+                                    <thead>
+                                        <tr className="table-header">
+                                            <th>ID</th>
+                                            <th>Nombre Sucursal</th>
+                                            <th>Encargado</th>
+                                            <th>Correo</th>
+                                            <th>Teléfono</th>
+                                            <th>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {paginatedData.length === 0 ? (
+                                            <tr><td colSpan="6" className="empty-state"><div className="empty-icon">📭</div><p>No hay sucursales activas disponibles</p><small>Comienza agregando una nueva sucursal</small></td></tr>
+                                        ) : (
+                                            paginatedData.map((sucursal, index) => (
+                                                <tr key={sucursal.sucursalId || index} className="table-row">
+                                                    <td><span className="table-badge">{sucursal.sucursalId}</span></td>
+                                                    <td><strong>{sucursal.nombreSucursal}</strong></td>
+                                                    <td>{sucursal.nombreEncargado}</td>
+                                                    <td>{sucursal.correoElectronico}</td>
+                                                    <td>{sucursal.telefono}</td>
+                                                    <td>
+                                                        <div className="action-buttons">
+                                                            <button className="icon-button edit-button" onClick={() => handleEditSucursal(sucursal)} title="Editar"><img src={icons.edit} alt="Editar" className="action-icon" /></button>
+                                                            <button className="icon-button delete-button" onClick={() => handleDeleteSucursalConfirm(sucursal.sucursalId)} title="Eliminar"><img src={icons.delete} alt="Eliminar" className="action-icon" /></button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
+                                
+                                {/* PAGINACIÓN - CORREGIDO: igual que en Pedidos */}
+                                {paginatedData.length > 0 && (
+                                    <div className="pagination">
+                                        <button 
+                                            onClick={() => handlePageChange(currentPage - 1)}
+                                            disabled={currentPage === 1}
+                                        >
+                                            ←
+                                        </button>
+                                        <span>
+                                            Página {currentPage} de {totalPages}
+                                        </span>
+                                        <button 
+                                            onClick={() => handlePageChange(currentPage + 1)}
+                                            disabled={currentPage === totalPages}
+                                        >
+                                            →
+                                        </button>
+                                    </div>
+                                )}
+                            </>
                         )}
                     </div>
                 </main>
