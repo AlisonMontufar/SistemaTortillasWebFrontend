@@ -1,6 +1,6 @@
 // src/services/apiInicio.js
 
-const API_BASE_URL = 'https://sistematortilla.onrender.com/api';
+const API_BASE_URL = 'https://sistematortillasbackend-1.onrender.com/api';
 
 // Función genérica para hacer requests
 const fetchData = async (endpoint, options = {}) => {

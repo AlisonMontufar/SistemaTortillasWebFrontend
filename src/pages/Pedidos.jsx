@@ -4,6 +4,7 @@ import ApiPedidos from "../services/apiPedidos";
 import "../styles/Pedidos.css";
 import Navbar from "../components/Navbar";
 import Sidebar from "../components/Sidebar";
+import { usePagination } from "../hooks/usePagination";
 
 const icons = {
     search: "https://cdn-icons-png.flaticon.com/512/54/54481.png",
@@ -51,6 +52,14 @@ function Pedidos() {
     });
 
     const PRECIO_TORTILLA = 22;
+
+    // Usar el hook de paginación
+    const {
+        currentPage,
+        totalPages,
+        paginatedData,
+        handlePageChange,
+    } = usePagination(pedidosData, 10, searchTerm);
 
     // Función para cargar pedidos por empresa
     const cargarPedidosPorEmpresa = useCallback(async (empresaId) => {
@@ -485,23 +494,22 @@ function Pedidos() {
                                 <p>Cargando pedidos...</p>
                             </div>
                         ) : (
-                            <table className="table">
-                                <thead>
-                                    <tr className="table-header">
-                                        <th>N. Pedido</th>
-                                        <th>Producto</th>
-                                        <th>Cantidad</th>
-                                        <th>Total</th>
-                                        <th>Sucursal</th>
-                                        <th>Estatus</th>
-                                        <th>Acciones</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {pedidosData.length > 0 ? (
-                                        pedidosData
-                                            .filter((p) => searchTerm === "" || p.id.toString().includes(searchTerm))
-                                            .map((pedido) => {
+                            <>
+                                <table className="table">
+                                    <thead>
+                                        <tr className="table-header">
+                                            <th>N. Pedido</th>
+                                            <th>Producto</th>
+                                            <th>Cantidad</th>
+                                            <th>Total</th>
+                                            <th>Sucursal</th>
+                                            <th>Estatus</th>
+                                            <th>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {paginatedData.length > 0 ? (
+                                            paginatedData.map((pedido) => {
                                                 const estatus = pedido.estatusGeneral || "Pagado";
                                                 const statusClass = estatus === "Pagado" ? "status-paid" : 
                                                                   estatus === "Completado" ? "status-completed" : "status-pending";
@@ -539,17 +547,39 @@ function Pedidos() {
                                                     </tr>
                                                 );
                                             })
-                                    ) : (
-                                        <tr>
-                                            <td colSpan="7" className="empty-state">
-                                                <div className="empty-icon">📦</div>
-                                                <p>No hay pedidos para esta empresa</p>
-                                                <small>Haz clic en "Nuevo Pedido" para comenzar</small>
-                                            </td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
+                                        ) : (
+                                            <tr>
+                                                <td colSpan="7" className="empty-state">
+                                                    <div className="empty-icon">📦</div>
+                                                    <p>No hay pedidos para esta empresa</p>
+                                                    <small>Haz clic en "Nuevo Pedido" para comenzar</small>
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                                
+                                {/* PAGINACIÓN */}
+                                {paginatedData.length > 0 && (
+                                    <div className="pagination">
+                                        <button 
+                                            onClick={() => handlePageChange(currentPage - 1)}
+                                            disabled={currentPage === 1}
+                                        >
+                                            ←
+                                        </button>
+                                        <span>
+                                            Página {currentPage} de {totalPages}
+                                        </span>
+                                        <button 
+                                            onClick={() => handlePageChange(currentPage + 1)}
+                                            disabled={currentPage === totalPages}
+                                        >
+                                            →
+                                        </button>
+                                    </div>
+                                )}
+                            </>
                         )}
                     </div>
                 </main>

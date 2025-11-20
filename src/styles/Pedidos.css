@@ -954,3 +954,36 @@ select:focus-visible {
 .status-paid {
     color: #0d3c1c !important;
 }
+
+
+/* PAGINACIÓN */
+.pagination {
+    margin-top: 16px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    padding: 10px;
+}
+
+.pagination button {
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-weight: 700;
+    background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(39,174,96,0.15);
+}
+
+.pagination button[disabled] {
+    background: #cccccc;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+.pagination span {
+    font-weight: 700;
+    color: var(--primary-orange, #e67e22);
+}
